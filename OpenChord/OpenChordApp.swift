@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct TimplayerApp: App {
+struct OpenChordApp: App {
     // PlaybackController живёт на уровне приложения, потому что музыка не должна
     // останавливаться при переходе между вкладками или закрытии экрана альбома.
     // Позже этот объект станет фасадом над AVPlayer, но UI менять не придётся.

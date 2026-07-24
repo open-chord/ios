@@ -23,7 +23,7 @@ struct HomeView: View {
             .padding()
         }
         .background(Color.black)
-        .navigationTitle("Timplayer")
+        .navigationTitle("OpenChord")
         .navigationDestination(for: Album.self) { AlbumView(album: $0) }
     }
 
