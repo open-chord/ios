@@ -11,12 +11,11 @@ final class PlaybackController: ObservableObject {
 
     private var timer: AnyCancellable?
 
-    init() {
-        // Таймер моделирует аудиодвижок. Он нужен не ради красивой анимации:
-        // весь lyrics UI уже подписан на реальную шкалу времени и позже сможет
-        // получать currentTime от AVPlayer без переделки экранов.
-        timer = Timer.publish(every: 0.25, on: .main, in: .common)
-            .autoconnect()
+    init(clock: any PlaybackClock = SystemPlaybackClock()) {
+        // Контроллер зависит от абстракции времени, а не от Timer напрямую.
+        // Благодаря этому тесты двигают playback вручную и никогда не ждут
+        // реальную четверть секунды.
+        timer = clock.ticks
             .sink { [weak self] _ in
                 self?.tick()
             }

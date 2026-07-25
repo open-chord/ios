@@ -25,7 +25,7 @@ enum MockCatalog {
             year: 2024,
             artwork: ArtworkStyle(symbol: "waveform", colors: [.red, .pink, .violet]),
             trackNames: ["Particles", "Almost There", "Gravity", "A Smaller Sky"]
-        )
+        ),
     ]
 
     static let recentlyPlayed = Array(albums.prefix(2))
@@ -63,7 +63,7 @@ enum MockCatalog {
         line("No map, no reason to go home", 52, 61),
         line("Just one more story left untold", 61, 71),
         line("The morning waits beyond the road", 71, 82),
-        line("But for a while we're not alone", 82, 94)
+        line("But for a while we're not alone", 82, 94),
     ]
 
     private static func line(_ text: String, _ start: TimeInterval, _ end: TimeInterval) -> LyricLine {

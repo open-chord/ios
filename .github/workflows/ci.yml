@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PROJECT: OpenChord.xcodeproj
+  SCHEME: OpenChord
+  DESTINATION: platform=iOS Simulator,name=iPhone 17,OS=latest
+
+jobs:
+  formatting:
+    name: Formatting
+    runs-on: macos-26
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Check Swift formatting
+        run: |
+          xcrun swift-format lint \
+            --recursive \
+            --strict \
+            --configuration .swift-format \
+            OpenChord OpenChordTests OpenChordUITests
+
+  static-analysis:
+    name: Static analysis
+    runs-on: macos-26
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Analyze
+        run: |
+          set -o pipefail
+          xcodebuild analyze \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath "$RUNNER_TEMP/OpenChordAnalyze" \
+            CODE_SIGNING_ALLOWED=NO
+
+  build:
+    name: Build
+    runs-on: macos-26
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Build the application
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath "$RUNNER_TEMP/OpenChordBuild" \
+            CODE_SIGNING_ALLOWED=NO
+
+  unit-tests:
+    name: Unit tests
+    runs-on: macos-26
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -destination "$DESTINATION" \
+            -derivedDataPath "$RUNNER_TEMP/OpenChordUnitTests" \
+            -resultBundlePath "$RUNNER_TEMP/OpenChordUnitTests.xcresult" \
+            -only-testing:OpenChordTests \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Upload unit-test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenChord-unit-tests-xcresult
+          path: ${{ runner.temp }}/OpenChordUnitTests.xcresult
+          if-no-files-found: ignore
+
+  ui-tests:
+    name: UI tests
+    runs-on: macos-26
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Run UI tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -destination "$DESTINATION" \
+            -derivedDataPath "$RUNNER_TEMP/OpenChordUITests" \
+            -resultBundlePath "$RUNNER_TEMP/OpenChordUITests.xcresult" \
+            -only-testing:OpenChordUITests \
+            -parallel-testing-enabled NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Upload UI-test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenChord-ui-tests-xcresult
+          path: ${{ runner.temp }}/OpenChordUITests.xcresult
+          if-no-files-found: ignore
