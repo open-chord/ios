@@ -19,6 +19,7 @@ struct CatalogAPIClientTests {
         #expect(track.lyrics.first?.text == "Streetlights drawing silver lines")
         #expect(track.duration == 96)
         #expect(track.audioSource.url()?.absoluteString == "http://192.168.1.20:8080/media/tracks/track")
+        #expect(album.artwork.remoteURL?.absoluteString == "http://192.168.1.20:8080/media/artwork/cover")
     }
 
     @Test(
@@ -43,7 +44,7 @@ private final class CatalogURLProtocol: URLProtocol, @unchecked Sendable {
               "id": "20000000-0000-0000-0000-000000000001",
               "title": "Afterglow",
               "year": 2026,
-              "artworkUrl": null,
+              "artworkUrl": "http://localhost:8080/media/artwork/cover",
               "artist": {
                 "id": "10000000-0000-0000-0000-000000000001",
                 "name": "Aurora Lines"
