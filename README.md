@@ -33,3 +33,12 @@ CI/CD считаются частью продукта, а не работой �
 
 Подробные требования зафиксированы в
 [`docs/ENGINEERING_PRINCIPLES.md`](docs/ENGINEERING_PRINCIPLES.md).
+
+## Тесты и CI
+
+Проект содержит отдельные unit- и UI-test targets. Каждый pull request
+проверяется GitHub Actions: форматирование, static analysis, сборка, unit-тесты
+и UI-тесты отображаются отдельными checks.
+
+Команды для локального запуска и устройство CI описаны в
+[`docs/TESTING.md`](docs/TESTING.md).
