@@ -9,35 +9,50 @@ final class PlaybackController: ObservableObject {
     @Published private(set) var elapsed: TimeInterval = 0
     @Published var isPlayerPresented = false
 
-    private var timer: AnyCancellable?
+    private let engine: any PlaybackEngine
+    private var subscriptions = Set<AnyCancellable>()
 
-    init(clock: any PlaybackClock = SystemPlaybackClock()) {
-        // Контроллер зависит от абстракции времени, а не от Timer напрямую.
-        // Благодаря этому тесты двигают playback вручную и никогда не ждут
-        // реальную четверть секунды.
-        timer = clock.ticks
-            .sink { [weak self] _ in
-                self?.tick()
+    init(engine: any PlaybackEngine = SimulatedPlaybackEngine()) {
+        self.engine = engine
+
+        engine.state
+            .sink { [weak self] state in
+                self?.elapsed = state.elapsed
+                self?.isPlaying = state.isPlaying
             }
+            .store(in: &subscriptions)
+
+        engine.events
+            .sink { [weak self] event in
+                if event == .finished {
+                    self?.playNext()
+                }
+            }
+            .store(in: &subscriptions)
     }
 
     func play(track: Track, in tracks: [Track]) {
         if currentTrack?.id != track.id {
             currentTrack = track
             queue = tracks
-            elapsed = 0
+            engine.load(track, autoplay: true)
+        } else {
+            engine.play()
         }
-        isPlaying = true
     }
 
     func togglePlayback() {
         guard currentTrack != nil else { return }
-        isPlaying.toggle()
+        if isPlaying {
+            engine.pause()
+        } else {
+            engine.play()
+        }
     }
 
     func seek(to time: TimeInterval) {
-        guard let currentTrack else { return }
-        elapsed = min(max(0, time), currentTrack.duration)
+        guard currentTrack != nil else { return }
+        engine.seek(to: time)
     }
 
     func playNext() {
@@ -59,15 +74,6 @@ final class PlaybackController: ObservableObject {
         return elapsed / duration
     }
 
-    private func tick() {
-        guard isPlaying, let track = currentTrack else { return }
-        if elapsed + 0.25 >= track.duration {
-            playNext()
-        } else {
-            elapsed += 0.25
-        }
-    }
-
     private func moveQueue(by offset: Int) {
         guard
             let currentTrack,
@@ -76,8 +82,8 @@ final class PlaybackController: ObservableObject {
         else { return }
 
         let newIndex = (currentIndex + offset + queue.count) % queue.count
-        self.currentTrack = queue[newIndex]
-        elapsed = 0
-        isPlaying = true
+        let nextTrack = queue[newIndex]
+        self.currentTrack = nextTrack
+        engine.load(nextTrack, autoplay: true)
     }
 }
