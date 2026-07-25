@@ -12,7 +12,7 @@ final class PlaybackController: ObservableObject {
     private let engine: any PlaybackEngine
     private var subscriptions = Set<AnyCancellable>()
 
-    init(engine: any PlaybackEngine = SimulatedPlaybackEngine()) {
+    init(engine: any PlaybackEngine = AVPlayerPlaybackEngine()) {
         self.engine = engine
 
         engine.state
