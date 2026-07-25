@@ -109,7 +109,11 @@ private struct AlbumDTO: Decodable {
     let tracks: [TrackDTO]
 
     func album(relativeTo serverURL: URL) -> Album {
-        let style = ArtworkStyle.forAlbum(id)
+        let artworkURL =
+            artworkUrl
+            .flatMap(URL.init(string:))
+            .map { serverURL.replacingPath(with: $0) }
+        let style = ArtworkStyle.forAlbum(id, remoteURL: artworkURL)
         return Album(
             id: id,
             title: title,
@@ -175,7 +179,7 @@ private extension URL {
 }
 
 private extension ArtworkStyle {
-    static func forAlbum(_ id: UUID) -> ArtworkStyle {
+    static func forAlbum(_ id: UUID, remoteURL: URL?) -> ArtworkStyle {
         let variants: [ArtworkStyle] = [
             ArtworkStyle(symbol: "sparkles", colors: [.violet, .pink, .orange]),
             ArtworkStyle(symbol: "moon.stars.fill", colors: [.indigo, .blue, .cyan]),
@@ -183,6 +187,7 @@ private extension ArtworkStyle {
             ArtworkStyle(symbol: "music.note", colors: [.blue, .cyan, .mint]),
         ]
         let index = id.uuidString.utf8.reduce(0) { $0 + Int($1) } % variants.count
-        return variants[index]
+        let fallback = variants[index]
+        return ArtworkStyle(symbol: fallback.symbol, colors: fallback.colors, remoteURL: remoteURL)
     }
 }

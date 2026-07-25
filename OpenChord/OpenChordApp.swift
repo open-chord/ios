@@ -7,12 +7,14 @@ struct OpenChordApp: App {
     // Позже этот объект станет фасадом над AVPlayer, но UI менять не придётся.
     @StateObject private var player = PlaybackController()
     @StateObject private var catalog = CatalogStore()
+    @StateObject private var downloads = TrackDownloadStore()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(player)
                 .environmentObject(catalog)
+                .environmentObject(downloads)
                 .preferredColorScheme(.dark)
         }
     }

@@ -34,6 +34,11 @@ The client intentionally re-anchors media links to the configured server
 address. This keeps streaming functional on a physical iPhone even if the
 backend was started with a loopback public URL.
 
+Server artwork is loaded asynchronously with a generated fallback for missing
+or unavailable images. Tracks can be downloaded individually or by album; the
+client stores them in Application Support and automatically prefers the local
+copy during playback.
+
 ## Engineering principles
 
 OpenChord is developed as a production-quality application from the start.

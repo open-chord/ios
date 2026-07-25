@@ -31,6 +31,19 @@ struct Track: Identifiable, Hashable {
     let audioSource: AudioSource
     let artwork: ArtworkStyle
     let lyrics: [LyricLine]
+
+    func using(audioSource: AudioSource) -> Track {
+        Track(
+            id: id,
+            title: title,
+            artistName: artistName,
+            albumTitle: albumTitle,
+            duration: duration,
+            audioSource: audioSource,
+            artwork: artwork,
+            lyrics: lyrics
+        )
+    }
 }
 
 enum AudioSource: Hashable {
@@ -54,11 +67,16 @@ struct LyricLine: Identifiable, Hashable {
     let endTime: TimeInterval
 }
 
-/// Пока обложки рисуются градиентами, поэтому проект запускается без ассетов.
-/// В реальном клиенте это значение заменится URL обложки и состоянием загрузки.
 struct ArtworkStyle: Hashable {
     let symbol: String
     let colors: [ArtworkColor]
+    let remoteURL: URL?
+
+    init(symbol: String, colors: [ArtworkColor], remoteURL: URL? = nil) {
+        self.symbol = symbol
+        self.colors = colors
+        self.remoteURL = remoteURL
+    }
 }
 
 enum ArtworkColor: String, Hashable {
