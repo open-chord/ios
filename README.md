@@ -1,45 +1,53 @@
 # OpenChord
 
-Open-source SwiftUI-клиент для self-hosted музыкального сервиса. OpenChord
-создаётся вокруг простой идеи: музыкальная библиотека, история прослушиваний
-и синхронизированные тексты должны оставаться под контролем пользователя.
+OpenChord is an open-source SwiftUI client for a self-hosted music server. It
+keeps the music library, listening history, and synchronized lyrics under the
+listener's control.
 
-Сейчас проект полностью работает на mock-данных: можно изучать навигацию,
-поток состояния плеера и синхронизацию текста, не поднимая backend.
+## Run on a local network
 
-## Запуск
+1. Start the backend from the sibling `open-chord-back` repository:
 
-1. Откройте `OpenChord.xcodeproj` в Xcode.
-2. Выберите любой iPhone Simulator с iOS 17 или новее.
-3. Нажмите Run.
-4. Откройте альбом **Afterglow** и включите **Night Drive**.
-5. Разверните mini-player и перейдите на вкладку **Lyrics**.
+   ```sh
+   ./scripts/lan-up.sh
+   ```
 
-## Как читать проект
+2. Open `OpenChord.xcodeproj`, select an iPhone running iOS 17 or later, and
+   press Run.
+3. Make sure the Mac and iPhone are connected to the same local network.
+4. In OpenChord, tap the server button and enter the address printed by the
+   backend script, for example `http://192.168.1.20:8080`.
+5. Allow local-network access when iOS asks for permission.
 
-- `Domain` — простые модели предметной области без зависимости от UI.
-- `Data` — mock-каталог; позднее здесь появятся DTO и GraphQL-репозитории.
-- `Playback` — единая точка управления воспроизведением.
-- `UI` — экраны, сгруппированные по пользовательским сценариям.
+The server includes a small demo album, **Afterglow**, so the catalog, audio
+streaming, byte-range requests, and synchronized lyrics work immediately.
+Simulator builds default to `http://localhost:8080`.
 
-Воспроизведение работает через изолированный `AVPlayer` engine. Сейчас каталог
-использует bundled demo-аудио; позднее `AudioSource` будет получать URL треков
-из self-hosted библиотеки.
+## Project structure
 
-## Принципы разработки
+- `Domain` contains UI-independent domain models.
+- `Data` contains the GraphQL client and catalog state.
+- `Playback` owns the shared `AVPlayer`-based playback engine.
+- `UI` groups views by user journey.
 
-OpenChord с самого начала развивается как production-quality приложение:
-визуальное качество, понятная архитектура, автоматические тесты и GitHub
-CI/CD считаются частью продукта, а не работой «на потом».
+The client intentionally re-anchors media links to the configured server
+address. This keeps streaming functional on a physical iPhone even if the
+backend was started with a loopback public URL.
 
-Подробные требования зафиксированы в
-[`docs/ENGINEERING_PRINCIPLES.md`](docs/ENGINEERING_PRINCIPLES.md).
+## Engineering principles
 
-## Тесты и CI
+OpenChord is developed as a production-quality application from the start.
+Visual quality, clear architecture, automated tests, accessibility, and CI/CD
+are product requirements rather than deferred cleanup.
 
-Проект содержит отдельные unit- и UI-test targets. Каждый pull request
-проверяется GitHub Actions: форматирование, static analysis, сборка, unit-тесты
-и UI-тесты отображаются отдельными checks.
+See [`docs/ENGINEERING_PRINCIPLES.md`](docs/ENGINEERING_PRINCIPLES.md) for the
+full engineering standard.
 
-Команды для локального запуска и устройство CI описаны в
+## Tests and CI
+
+The project has separate unit- and UI-test targets. Every pull request runs
+formatting, static analysis, build, unit-test, and UI-test checks in GitHub
+Actions.
+
+Local commands and the CI setup are documented in
 [`docs/TESTING.md`](docs/TESTING.md).

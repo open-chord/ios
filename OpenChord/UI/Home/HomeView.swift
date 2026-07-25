@@ -1,18 +1,63 @@
 import SwiftUI
 
 struct HomeView: View {
+    @EnvironmentObject private var catalog: CatalogStore
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 18)]
+    let onOpenServerSettings: () -> Void
+
+    init(onOpenServerSettings: @escaping () -> Void = {}) {
+        self.onOpenServerSettings = onOpenServerSettings
+    }
 
     var body: some View {
+        Group {
+            if catalog.isLoading && catalog.albums.isEmpty {
+                ProgressView("Loading your library…")
+            } else if let error = catalog.errorMessage, catalog.albums.isEmpty {
+                ContentUnavailableView {
+                    Label("Server Unavailable", systemImage: "wifi.exclamationmark")
+                } description: {
+                    Text(error)
+                } actions: {
+                    Button("Server Settings", systemImage: "server.rack") {
+                        onOpenServerSettings()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.blue)
+                    .accessibilityIdentifier("errorServerSettings")
+
+                    Button("Try Again") {
+                        Task { await catalog.reload() }
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.white)
+                }
+            } else if catalog.albums.isEmpty {
+                ContentUnavailableView(
+                    "No Music Yet",
+                    systemImage: "music.note.list",
+                    description: Text("The connected server has no albums.")
+                )
+            } else {
+                catalogContent
+            }
+        }
+        .background(Color.black)
+        .navigationTitle("OpenChord")
+        .navigationDestination(for: Album.self) { AlbumView(album: $0) }
+    }
+
+    private var catalogContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
-                hero
+                if let featured = catalog.albums.first {
+                    hero(featured)
+                }
 
-                Text("Made for late nights")
+                Text("Your library")
                     .font(.title2.bold())
-
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
-                    ForEach(MockCatalog.albums) { album in
+                    ForEach(catalog.albums) { album in
                         NavigationLink(value: album) {
                             AlbumCard(album: album)
                         }
@@ -22,22 +67,20 @@ struct HomeView: View {
             }
             .padding()
         }
-        .background(Color.black)
-        .navigationTitle("OpenChord")
-        .navigationDestination(for: Album.self) { AlbumView(album: $0) }
+        .refreshable { await catalog.reload() }
     }
 
-    private var hero: some View {
+    private func hero(_ album: Album) -> some View {
         ZStack(alignment: .bottomLeading) {
-            ArtworkView(style: MockCatalog.albums[0].artwork, cornerRadius: 30)
+            ArtworkView(style: album.artwork, cornerRadius: 30)
 
             LinearGradient(colors: [.clear, .black.opacity(0.85)], startPoint: .center, endPoint: .bottom)
                 .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("FEATURED ALBUM").font(.caption.bold()).tracking(1.5)
-                Text(MockCatalog.albums[0].title).font(.largeTitle.bold())
-                Text(MockCatalog.albums[0].artist.name).foregroundStyle(.secondary)
+                Text(album.title).font(.largeTitle.bold())
+                Text(album.artist.name).foregroundStyle(.secondary)
             }
             .padding(24)
         }

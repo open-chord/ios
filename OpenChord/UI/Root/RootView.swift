@@ -2,16 +2,22 @@ import SwiftUI
 
 struct RootView: View {
     @EnvironmentObject private var player: PlaybackController
+    @EnvironmentObject private var catalog: CatalogStore
+    @State private var isShowingServerSettings = false
 
     var body: some View {
         TabView {
             NavigationStack {
-                HomeView()
+                HomeView {
+                    isShowingServerSettings = true
+                }
+                .toolbar { serverToolbar }
             }
             .tabItem { Label("Home", systemImage: "house.fill") }
 
             NavigationStack {
                 LibraryView()
+                    .toolbar { serverToolbar }
             }
             .tabItem { Label("Library", systemImage: "square.stack.fill") }
         }
@@ -29,7 +35,23 @@ struct RootView: View {
         .sheet(isPresented: $player.isPlayerPresented) {
             PlayerView()
         }
+        .sheet(isPresented: $isShowingServerSettings) {
+            ServerSettingsView()
+        }
         .tint(.white)
+        .task {
+            await catalog.loadIfNeeded()
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var serverToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button("Server settings", systemImage: "server.rack") {
+                isShowingServerSettings = true
+            }
+            .accessibilityIdentifier("serverSettings")
+        }
     }
 }
 

@@ -35,11 +35,14 @@ struct Track: Identifiable, Hashable {
 
 enum AudioSource: Hashable {
     case bundled(resource: String, fileExtension: String)
+    case remote(URL)
 
     func url(in bundle: Bundle = .main) -> URL? {
         switch self {
         case let .bundled(resource, fileExtension):
             bundle.url(forResource: resource, withExtension: fileExtension)
+        case let .remote(url):
+            url
         }
     }
 }
