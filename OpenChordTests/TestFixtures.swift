@@ -92,6 +92,7 @@ func makeTrack(
         artistName: "Test Artist",
         albumTitle: "Test Album",
         duration: duration,
+        audioSource: .bundled(resource: "OpenChordDemo", fileExtension: "m4a"),
         artwork: ArtworkStyle(symbol: "music.note", colors: [.blue, .indigo]),
         lyrics: lyrics
     )

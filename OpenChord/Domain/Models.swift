@@ -28,8 +28,20 @@ struct Track: Identifiable, Hashable {
     let artistName: String
     let albumTitle: String
     let duration: TimeInterval
+    let audioSource: AudioSource
     let artwork: ArtworkStyle
     let lyrics: [LyricLine]
+}
+
+enum AudioSource: Hashable {
+    case bundled(resource: String, fileExtension: String)
+
+    func url(in bundle: Bundle = .main) -> URL? {
+        switch self {
+        case let .bundled(resource, fileExtension):
+            bundle.url(forResource: resource, withExtension: fileExtension)
+        }
+    }
 }
 
 struct LyricLine: Identifiable, Hashable {

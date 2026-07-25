@@ -43,7 +43,8 @@ enum MockCatalog {
                 title: name,
                 artistName: artist.name,
                 albumTitle: title,
-                duration: TimeInterval(196 + index * 17),
+                duration: 96,
+                audioSource: .bundled(resource: "OpenChordDemo", fileExtension: "m4a"),
                 artwork: artwork,
                 // Полный синхронизированный текст есть у демонстрационного трека.
                 // Для остальных песен пустой массив показывает честное empty state.

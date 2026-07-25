@@ -12,9 +12,10 @@ The unit-test bundle imports the application module with `@testable`. It covers
 domain formatting and playback state without launching the UI.
 
 `PlaybackController` receives a `PlaybackEngine`, so queue policy can be tested
-without a media framework. The temporary `SimulatedPlaybackEngine` receives a
-`PlaybackClock`; its tests use `ManualPlaybackClock` to advance playback
-immediately and deterministically instead of waiting for a real timer.
+without a media framework. Production uses `AVPlayerPlaybackEngine` and bundled
+demo media. Integration tests verify media resolution, item creation, seeking
+and completion events. Lower-level timing tests use `SimulatedPlaybackEngine`
+with a `ManualPlaybackClock`, so they never wait for real time.
 
 ### OpenChordUITests
 
