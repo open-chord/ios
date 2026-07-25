@@ -13,5 +13,6 @@ final class OpenChordUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["OpenChord"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.tabBars.buttons["Home"].exists)
         XCTAssertTrue(app.tabBars.buttons["Library"].exists)
+        XCTAssertTrue(app.buttons["serverSettings"].exists)
     }
 }

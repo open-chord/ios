@@ -8,15 +8,17 @@ struct RootView: View {
     var body: some View {
         TabView {
             NavigationStack {
-                HomeView()
+                HomeView {
+                    isShowingServerSettings = true
+                }
+                .toolbar { serverToolbar }
             }
-            .toolbar { serverToolbar }
             .tabItem { Label("Home", systemImage: "house.fill") }
 
             NavigationStack {
                 LibraryView()
+                    .toolbar { serverToolbar }
             }
-            .toolbar { serverToolbar }
             .tabItem { Label("Library", systemImage: "square.stack.fill") }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {

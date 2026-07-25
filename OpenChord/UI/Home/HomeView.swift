@@ -3,6 +3,11 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject private var catalog: CatalogStore
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 18)]
+    let onOpenServerSettings: () -> Void
+
+    init(onOpenServerSettings: @escaping () -> Void = {}) {
+        self.onOpenServerSettings = onOpenServerSettings
+    }
 
     var body: some View {
         Group {
@@ -14,10 +19,18 @@ struct HomeView: View {
                 } description: {
                     Text(error)
                 } actions: {
+                    Button("Server Settings", systemImage: "server.rack") {
+                        onOpenServerSettings()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.blue)
+                    .accessibilityIdentifier("errorServerSettings")
+
                     Button("Try Again") {
                         Task { await catalog.reload() }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.bordered)
+                    .tint(.white)
                 }
             } else if catalog.albums.isEmpty {
                 ContentUnavailableView(
