@@ -100,20 +100,20 @@ private struct TrackRow: View {
         HStack(spacing: 14) {
             Button(action: action) {
                 HStack(spacing: 14) {
-                Text("\(number)")
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .frame(width: 24)
+                    Text("\(number)")
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 24)
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(track.title).foregroundStyle(.primary)
-                    Text(track.artistName).font(.caption).foregroundStyle(.secondary)
-                }
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(track.title).foregroundStyle(.primary)
+                        Text(track.artistName).font(.caption).foregroundStyle(.secondary)
+                    }
 
-                Spacer()
-                Text(track.duration.playbackTime)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(track.duration.playbackTime)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
                 }
                 .contentShape(Rectangle())
             }

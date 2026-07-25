@@ -109,7 +109,8 @@ private struct AlbumDTO: Decodable {
     let tracks: [TrackDTO]
 
     func album(relativeTo serverURL: URL) -> Album {
-        let artworkURL = artworkUrl
+        let artworkURL =
+            artworkUrl
             .flatMap(URL.init(string:))
             .map { serverURL.replacingPath(with: $0) }
         let style = ArtworkStyle.forAlbum(id, remoteURL: artworkURL)

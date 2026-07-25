@@ -25,7 +25,7 @@ final class TrackDownloadStore: ObservableObject {
         let baseDirectory =
             downloadsDirectory
             ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-                .appending(path: "OpenChord/Downloads", directoryHint: .isDirectory)
+            .appending(path: "OpenChord/Downloads", directoryHint: .isDirectory)
         self.downloadsDirectory = baseDirectory
         try? fileManager.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
     }
@@ -88,7 +88,8 @@ final class TrackDownloadStore: ObservableObject {
     private func destinationURL(for track: Track, response: HTTPURLResponse) -> URL {
         let responseExtension = response.url?.pathExtension
         let sourceExtension = track.audioSource.url()?.pathExtension
-        let fileExtension = [responseExtension, sourceExtension, fileExtension(for: response.mimeType)]
+        let fileExtension =
+            [responseExtension, sourceExtension, fileExtension(for: response.mimeType)]
             .compactMap { $0 }
             .first { !$0.isEmpty } ?? "m4a"
         return downloadsDirectory.appending(path: "\(track.id.uuidString.lowercased()).\(fileExtension)")
