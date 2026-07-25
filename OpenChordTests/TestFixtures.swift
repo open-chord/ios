@@ -17,6 +17,70 @@ final class ManualPlaybackClock: PlaybackClock {
     }
 }
 
+@MainActor
+final class ManualPlaybackEngine: PlaybackEngine {
+    private let stateSubject = CurrentValueSubject<PlaybackEngineState, Never>(.init())
+    private let eventSubject = PassthroughSubject<PlaybackEngineEvent, Never>()
+
+    private(set) var loadedTrack: Track?
+
+    var state: AnyPublisher<PlaybackEngineState, Never> {
+        stateSubject.eraseToAnyPublisher()
+    }
+
+    var events: AnyPublisher<PlaybackEngineEvent, Never> {
+        eventSubject.eraseToAnyPublisher()
+    }
+
+    func load(_ track: Track, autoplay: Bool) {
+        loadedTrack = track
+        stateSubject.send(.init(elapsed: 0, duration: track.duration, isPlaying: autoplay))
+    }
+
+    func play() {
+        send(elapsed: stateSubject.value.elapsed, isPlaying: true)
+    }
+
+    func pause() {
+        send(elapsed: stateSubject.value.elapsed, isPlaying: false)
+    }
+
+    func seek(to time: TimeInterval) {
+        send(elapsed: min(max(0, time), stateSubject.value.duration), isPlaying: stateSubject.value.isPlaying)
+    }
+
+    func send(elapsed: TimeInterval, isPlaying: Bool) {
+        stateSubject.send(
+            .init(
+                elapsed: elapsed,
+                duration: loadedTrack?.duration ?? 0,
+                isPlaying: isPlaying
+            )
+        )
+    }
+
+    func finish() {
+        eventSubject.send(.finished)
+    }
+}
+
+@MainActor
+final class PlaybackEngineRecorder {
+    private(set) var state = PlaybackEngineState()
+    private(set) var events: [PlaybackEngineEvent] = []
+    private var subscriptions = Set<AnyCancellable>()
+
+    init(engine: any PlaybackEngine) {
+        engine.state
+            .sink { [weak self] in self?.state = $0 }
+            .store(in: &subscriptions)
+
+        engine.events
+            .sink { [weak self] in self?.events.append($0) }
+            .store(in: &subscriptions)
+    }
+}
+
 func makeTrack(
     title: String = "Test Track",
     duration: TimeInterval = 10,

@@ -6,26 +6,27 @@ import Testing
 struct PlaybackControllerTests {
     @Test("Play selects a track and starts playback")
     func playSelectsTrack() {
-        let clock = ManualPlaybackClock()
+        let engine = ManualPlaybackEngine()
         let track = makeTrack()
-        let controller = PlaybackController(clock: clock)
+        let controller = PlaybackController(engine: engine)
 
         controller.play(track: track, in: [track])
 
+        #expect(engine.loadedTrack == track)
         #expect(controller.currentTrack == track)
         #expect(controller.queue == [track])
         #expect(controller.isPlaying)
         #expect(controller.elapsed == 0)
     }
 
-    @Test("The injected clock advances playback deterministically")
-    func clockAdvancesElapsedTime() {
-        let clock = ManualPlaybackClock()
+    @Test("Engine state drives the public playback state")
+    func engineDrivesPlaybackState() {
+        let engine = ManualPlaybackEngine()
         let track = makeTrack(duration: 10)
-        let controller = PlaybackController(clock: clock)
+        let controller = PlaybackController(engine: engine)
         controller.play(track: track, in: [track])
 
-        clock.advance(by: 4)
+        engine.send(elapsed: 1, isPlaying: true)
 
         #expect(controller.elapsed == 1)
         #expect(controller.progress == 0.1)
@@ -34,7 +35,7 @@ struct PlaybackControllerTests {
     @Test("Seek clamps values to the playable range")
     func seekClampsToTrackDuration() {
         let track = makeTrack(duration: 10)
-        let controller = PlaybackController(clock: ManualPlaybackClock())
+        let controller = PlaybackController(engine: ManualPlaybackEngine())
         controller.play(track: track, in: [track])
 
         controller.seek(to: -4)
@@ -48,7 +49,7 @@ struct PlaybackControllerTests {
     func nextTrackWrapsAroundQueue() {
         let first = makeTrack(title: "First")
         let second = makeTrack(title: "Second")
-        let controller = PlaybackController(clock: ManualPlaybackClock())
+        let controller = PlaybackController(engine: ManualPlaybackEngine())
         controller.play(track: second, in: [first, second])
 
         controller.playNext()
@@ -61,7 +62,7 @@ struct PlaybackControllerTests {
     func previousRestartsCurrentTrack() {
         let first = makeTrack(title: "First")
         let second = makeTrack(title: "Second")
-        let controller = PlaybackController(clock: ManualPlaybackClock())
+        let controller = PlaybackController(engine: ManualPlaybackEngine())
         controller.play(track: second, in: [first, second])
         controller.seek(to: 5)
 
@@ -69,5 +70,20 @@ struct PlaybackControllerTests {
 
         #expect(controller.currentTrack == second)
         #expect(controller.elapsed == 0)
+    }
+
+    @Test("Finished engine event advances the queue")
+    func finishedEventAdvancesQueue() {
+        let first = makeTrack(title: "First")
+        let second = makeTrack(title: "Second")
+        let engine = ManualPlaybackEngine()
+        let controller = PlaybackController(engine: engine)
+        controller.play(track: first, in: [first, second])
+
+        engine.finish()
+
+        #expect(controller.currentTrack == second)
+        #expect(engine.loadedTrack == second)
+        #expect(controller.isPlaying)
     }
 }
