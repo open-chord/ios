@@ -20,6 +20,35 @@ as a disposable prototype.
 - Comments should explain decisions, contracts and non-obvious trade-offs.
   Comments that merely restate the code should not be added.
 
+## Apple UI/UX standard
+
+The client should feel at home on current Apple platforms. Open-source status is
+never an excuse for compromised interaction design.
+
+- Follow the current Apple Human Interface Guidelines and verify relevant
+  guidance before introducing or changing a major interaction pattern.
+- Prefer native SwiftUI navigation, presentation, controls, materials, gestures,
+  focus behaviour and system integrations. Reimplement a system component only
+  when the native behaviour cannot satisfy a documented product need.
+- Adopt useful capabilities from the latest stable Apple SDK. Guard newer APIs
+  with availability checks and provide a coherent fallback when the deployment
+  target still supports an older OS.
+- Respect safe areas, keyboard behaviour, system gestures and platform-standard
+  placement of toolbars, search, menus and destructive actions.
+- Support Dynamic Type without clipping, VoiceOver with meaningful labels and
+  ordering, sufficient contrast, Reduce Motion and minimum comfortable touch
+  targets.
+- Treat haptics, animation and visual effects as interaction feedback. They must
+  remain subtle, responsive and optional where accessibility settings require.
+- Design for real content: long and localized text, missing or slow artwork,
+  large libraries, unavailable network data and interrupted playback.
+- Check important screens on multiple iPhone sizes, in portrait and any
+  supported orientation, with accessibility text sizes and both appearance
+  modes before considering them polished.
+- Do not copy the surface appearance of an Apple app while ignoring its
+  interaction semantics. Convenience, predictability and low cognitive load
+  take priority over decoration.
+
 ## Verification
 
 Every behaviour should be verified at the lowest useful level, with additional
@@ -64,6 +93,6 @@ A task is complete when:
 1. The implementation matches the intended product experience.
 2. Relevant automated tests have been added or updated.
 3. The app builds and all relevant tests pass locally.
-4. CI configuration remains valid.
-5. Documentation is updated when contracts or developer workflows change.
-
+4. Relevant Apple UI/UX and accessibility states have been reviewed.
+5. CI configuration remains valid.
+6. Documentation is updated when contracts or developer workflows change.

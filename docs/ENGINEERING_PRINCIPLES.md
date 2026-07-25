@@ -19,6 +19,40 @@ Visual quality includes:
 - empty, loading, error and offline states;
 - Dynamic Type, VoiceOver, contrast and reduced-motion support.
 
+## Native to Apple platforms
+
+OpenChord should not merely look attractive in screenshots. It should behave
+like a thoughtful, current Apple-platform application.
+
+The Apple Human Interface Guidelines and the latest stable SDK are our baseline.
+We use native SwiftUI components and platform conventions whenever they provide
+the intended behaviour. This gives users familiar navigation, accessibility,
+keyboard and system-gesture semantics instead of a custom imitation that only
+looks native.
+
+New Apple UI capabilities should be adopted deliberately rather than added as
+decoration. A new material, transition, navigation API or system integration is
+valuable when it makes the hierarchy clearer, an action easier to discover or
+feedback more immediate. When a feature is unavailable on the oldest supported
+OS, OpenChord must provide a coherent fallback rather than splitting into two
+visually unrelated applications.
+
+Every important flow should be reviewed with:
+
+- compact and large iPhone layouts;
+- long and localized metadata;
+- light and dark appearance;
+- large accessibility text sizes;
+- VoiceOver and Reduce Motion;
+- missing artwork, loading, offline and failure states;
+- one-handed use and system gesture areas.
+
+We optimise for low cognitive load: the next action should be obvious, controls
+should remain where users expect them, and common listening tasks should take as
+few deliberate steps as practical. Open-source software can be both powerful
+and exceptionally pleasant to use; OpenChord treats that combination as a
+product requirement.
+
 ## Beautiful inside
 
 The codebase should teach good Swift and Apple-platform engineering practices.
@@ -51,4 +85,3 @@ Secrets and signing material will live only in protected GitHub environments.
 The repository currently contains the SwiftUI prototype. The complete test
 matrix and GitHub Actions pipelines described above are requirements for the
 next engineering phase; they are not yet implemented.
-
