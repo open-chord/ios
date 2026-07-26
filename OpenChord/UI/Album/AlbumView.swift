@@ -1,13 +1,10 @@
 import SwiftUI
 
-/// Album detail screen with playback, offline download, and per-track actions.
 struct AlbumView: View {
     @EnvironmentObject private var player: PlaybackController
     @EnvironmentObject private var downloads: TrackDownloadStore
-    /// Album aggregate rendered by this navigation destination.
     let album: Album
 
-    /// Scrollable album presentation and track list.
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {

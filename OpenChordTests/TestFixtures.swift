@@ -3,7 +3,6 @@ import Foundation
 @testable import OpenChord
 
 @MainActor
-/// Manually advanced clock used to test time-dependent playback deterministically.
 final class ManualPlaybackClock: PlaybackClock {
     private let subject = PassthroughSubject<Void, Never>()
 
@@ -19,7 +18,6 @@ final class ManualPlaybackClock: PlaybackClock {
 }
 
 @MainActor
-/// In-memory engine test double that records the loaded track and exposes state controls.
 final class ManualPlaybackEngine: PlaybackEngine {
     private let stateSubject = CurrentValueSubject<PlaybackEngineState, Never>(.init())
     private let eventSubject = PassthroughSubject<PlaybackEngineEvent, Never>()
@@ -67,7 +65,6 @@ final class ManualPlaybackEngine: PlaybackEngine {
 }
 
 @MainActor
-/// Subscriber that records observable engine output for assertions.
 final class PlaybackEngineRecorder {
     private(set) var state = PlaybackEngineState()
     private(set) var events: [PlaybackEngineEvent] = []
@@ -84,7 +81,6 @@ final class PlaybackEngineRecorder {
     }
 }
 
-/// Creates a valid track fixture with optional title, duration, and lyrics overrides.
 func makeTrack(
     title: String = "Test Track",
     duration: TimeInterval = 10,

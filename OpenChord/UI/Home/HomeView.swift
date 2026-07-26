@@ -1,18 +1,14 @@
 import SwiftUI
 
-/// Discovery-oriented library home with featured artwork and an adaptive album grid.
 struct HomeView: View {
     @EnvironmentObject private var catalog: CatalogStore
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 18)]
-    /// Action used by unavailable-server states to present configuration.
     let onOpenServerSettings: () -> Void
 
-    /// Creates the home screen with an optional server-settings action.
     init(onOpenServerSettings: @escaping () -> Void = {}) {
         self.onOpenServerSettings = onOpenServerSettings
     }
 
-    /// Loading, error, empty, or populated home content.
     var body: some View {
         Group {
             if catalog.isLoading && catalog.albums.isEmpty {
@@ -92,10 +88,8 @@ struct HomeView: View {
 }
 
 private struct AlbumCard: View {
-    /// Album represented by this grid card.
     let album: Album
 
-    /// Artwork and concise album metadata.
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             ArtworkView(style: album.artwork, cornerRadius: 18)

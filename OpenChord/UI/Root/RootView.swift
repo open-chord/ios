@@ -1,12 +1,10 @@
 import SwiftUI
 
-/// Root tab and navigation composition with a persistent mini-player.
 struct RootView: View {
     @EnvironmentObject private var player: PlaybackController
     @EnvironmentObject private var catalog: CatalogStore
     @State private var isShowingServerSettings = false
 
-    /// Home/library tabs plus global sheets and mini-player.
     var body: some View {
         TabView {
             NavigationStack {
@@ -26,7 +24,10 @@ struct RootView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let track = player.currentTrack {
                 MiniPlayer(track: track)
-                    // TabView's safe area does not subtract its own bar from this custom inset.
+                    // Safe-area всего TabView включает нижнюю область экрана, но
+                    // не вычитает из неё собственный tab bar. Поднимаем плеер на
+                    // стандартную высоту бара, чтобы два стеклянных слоя не
+                    // накладывались друг на друга.
                     .padding(.horizontal, 10)
                     .padding(.bottom, 50)
             }
@@ -56,10 +57,8 @@ struct RootView: View {
 
 private struct MiniPlayer: View {
     @EnvironmentObject private var player: PlaybackController
-    /// Track summarized by the compact player.
     let track: Track
 
-    /// Compact playback status and primary play/pause control.
     var body: some View {
         HStack(spacing: 12) {
             ArtworkView(style: track.artwork, cornerRadius: 10)

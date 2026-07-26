@@ -2,27 +2,23 @@ import Combine
 import Foundation
 
 @MainActor
-/// Observable catalog state and persisted server selection for the entire application.
+/// Owns the loaded catalog and the user's selected OpenChord server.
+///
+/// The store serializes reloads and preserves the last successful catalog when
+/// a later request fails, allowing the UI to remain useful while offline.
 final class CatalogStore: ObservableObject {
-    /// UserDefaults key storing the selected server address.
     static let serverURLKey = "openchord.serverURL"
-    /// Loopback server used by Simulator and first launch.
     static let defaultServerAddress = "http://localhost:8080"
 
-    /// Latest successfully loaded albums.
     @Published private(set) var albums: [Album] = []
-    /// Whether a catalog request is currently running.
     @Published private(set) var isLoading = false
-    /// User-facing description of the most recent loading failure.
     @Published private(set) var errorMessage: String?
-    /// Normalized base URL used for catalog and media requests.
     @Published private(set) var serverURL: URL
 
     private let loader: any CatalogLoading
     private let defaults: UserDefaults
     private var hasLoaded = false
 
-    /// Creates catalog state with injectable loading and persistence dependencies.
     init(
         loader: any CatalogLoading = CatalogAPIClient(),
         defaults: UserDefaults = .standard
@@ -35,13 +31,13 @@ final class CatalogStore: ObservableObject {
             ?? URL(string: Self.defaultServerAddress)!
     }
 
-    /// Performs the first load once while allowing explicit refreshes later.
+    /// Loads the catalog once for the lifetime of this store.
     func loadIfNeeded() async {
         guard !hasLoaded else { return }
         await reload()
     }
 
-    /// Reloads the catalog unless another request is already in flight.
+    /// Refreshes the catalog unless a request is already in progress.
     func reload() async {
         guard !isLoading else { return }
         isLoading = true
@@ -56,7 +52,11 @@ final class CatalogStore: ObservableObject {
         }
     }
 
-    /// Validates, persists, and immediately tests a new server address.
+    /// Persists a new server address and immediately reloads from it.
+    ///
+    /// - Parameter address: An HTTP or HTTPS origin without a path.
+    /// - Throws: ``ServerAddressError/invalid`` when `address` cannot be
+    ///   normalized to an allowed server URL.
     func updateServerAddress(_ address: String) async throws {
         guard let url = Self.normalizedURL(from: address) else {
             throw ServerAddressError.invalid
@@ -68,7 +68,11 @@ final class CatalogStore: ObservableObject {
         await reload()
     }
 
-    /// Normalizes an HTTP(S) server address and rejects embedded paths.
+    /// Converts user input into an HTTP or HTTPS server origin.
+    ///
+    /// - Parameter address: The value entered in server settings.
+    /// - Returns: A normalized URL with no query or fragment, or `nil` when the
+    ///   input is not a valid server origin.
     static func normalizedURL(from address: String) -> URL? {
         var value = address.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty else { return nil }
@@ -101,11 +105,9 @@ final class CatalogStore: ObservableObject {
     }
 }
 
-/// Validation failures for manually entered server addresses.
 enum ServerAddressError: LocalizedError {
     case invalid
 
-    /// Message displayed by the server-settings form.
     var errorDescription: String? {
         "Enter a valid HTTP or HTTPS server address without a path."
     }

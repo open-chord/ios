@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Modal form for validating and persisting the self-hosted server address.
 struct ServerSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var catalog: CatalogStore
@@ -8,7 +7,6 @@ struct ServerSettingsView: View {
     @State private var validationMessage: String?
     @State private var isSaving = false
 
-    /// Address form, validation feedback, and save action.
     var body: some View {
         NavigationStack {
             Form {

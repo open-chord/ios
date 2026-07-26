@@ -15,17 +15,14 @@ final class AVPlayerPlaybackEngine: PlaybackEngine {
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
 
-    /// Read-only playback state consumed by ``PlaybackController``.
     var state: AnyPublisher<PlaybackEngineState, Never> {
         stateSubject.eraseToAnyPublisher()
     }
 
-    /// Read-only lifecycle events, including natural completion.
     var events: AnyPublisher<PlaybackEngineEvent, Never> {
         eventSubject.eraseToAnyPublisher()
     }
 
-    /// Creates an engine with injectable player and bundle dependencies.
     init(player: AVPlayer = AVPlayer(), bundle: Bundle = .main) {
         self.player = player
         self.bundle = bundle
@@ -41,7 +38,6 @@ final class AVPlayerPlaybackEngine: PlaybackEngine {
         }
     }
 
-    /// Resolves the track source, replaces the player item, and optionally starts playback.
     func load(_ track: Track, autoplay: Bool) {
         guard let url = track.audioSource.url(in: bundle) else {
             player.replaceCurrentItem(with: nil)
@@ -65,20 +61,17 @@ final class AVPlayerPlaybackEngine: PlaybackEngine {
         }
     }
 
-    /// Resumes the current player item.
     func play() {
         guard player.currentItem != nil else { return }
         player.play()
         updateState { $0.isPlaying = true }
     }
 
-    /// Pauses while retaining the current item and position.
     func pause() {
         player.pause()
         updateState { $0.isPlaying = false }
     }
 
-    /// Seeks with zero tolerance for predictable lyric synchronization.
     func seek(to time: TimeInterval) {
         let clampedTime = min(max(0, time), stateSubject.value.duration)
         player.seek(

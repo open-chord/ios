@@ -1,22 +1,33 @@
 import Foundation
 
-/// Abstraction used by catalog state to load albums from a configurable server.
+/// Loads the catalog from an OpenChord server.
 protocol CatalogLoading: Sendable {
-    /// Fetches the complete catalog from the supplied OpenChord server.
+    /// Fetches the server's current albums.
+    ///
+    /// - Parameter serverURL: The normalized base URL of the OpenChord server.
+    /// - Returns: Albums in the order supplied by the catalog API.
+    /// - Throws: A transport, decoding, or server-reported error.
     func fetchAlbums(from serverURL: URL) async throws -> [Album]
 }
 
-/// GraphQL-backed implementation of ``CatalogLoading``.
+/// A GraphQL-backed catalog loader.
 struct CatalogAPIClient: CatalogLoading {
-    /// Injectable session used for production networking and deterministic tests.
     private let session: URLSession
 
-    /// Creates a client backed by the shared or a test-specific URL session.
+    /// Creates a catalog client.
+    ///
+    /// - Parameter session: The session used for requests. Tests can supply an
+    ///   isolated session with a custom protocol handler.
     init(session: URLSession = .shared) {
         self.session = session
     }
 
-    /// Executes the catalog query and maps transport DTOs into domain aggregates.
+    /// Fetches and maps the catalog from an OpenChord GraphQL endpoint.
+    ///
+    /// - Parameter serverURL: The normalized server base URL.
+    /// - Returns: Domain albums with media URLs resolved against `serverURL`.
+    /// - Throws: ``CatalogAPIError`` for invalid HTTP or GraphQL responses, or
+    ///   an error produced by `URLSession` or `JSONDecoder`.
     func fetchAlbums(from serverURL: URL) async throws -> [Album] {
         let endpoint = serverURL.appending(path: "graphql")
         var request = URLRequest(url: endpoint)
@@ -67,13 +78,12 @@ struct CatalogAPIClient: CatalogLoading {
     }
 }
 
-/// Failures exposed by the catalog transport boundary.
+/// Errors produced after a catalog request reaches the server.
 enum CatalogAPIError: LocalizedError {
     case invalidResponse
     case httpStatus(Int)
     case graphQL(String)
 
-    /// Human-readable message suitable for conversion into catalog UI state.
     var errorDescription: String? {
         switch self {
         case .invalidResponse:

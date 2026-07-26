@@ -1,19 +1,15 @@
 import Combine
 import Foundation
 
-/// Snapshot published by a playback engine.
+/// The observable state of a playback engine.
 struct PlaybackEngineState: Equatable {
-    /// Current position in seconds.
     var elapsed: TimeInterval = 0
-    /// Loaded item duration in seconds.
     var duration: TimeInterval = 0
-    /// Whether audio is expected to be advancing.
     var isPlaying = false
 }
 
-/// Discrete playback lifecycle events that cannot be represented by state alone.
+/// Events that represent transitions rather than durable playback state.
 enum PlaybackEngineEvent: Equatable {
-    /// The current item reached its natural end.
     case finished
 }
 
@@ -22,40 +18,41 @@ enum PlaybackEngineEvent: Equatable {
 /// Implementations own media-specific state and side effects. The controller
 /// remains responsible for queue policy and presentation state.
 @MainActor
+/// The media-playing boundary used by ``PlaybackController``.
+///
+/// Implementations publish state rather than requiring the controller to poll,
+/// which keeps the real AVPlayer engine and deterministic test engine
+/// interchangeable.
 protocol PlaybackEngine: AnyObject {
-    /// Current engine state stream.
     var state: AnyPublisher<PlaybackEngineState, Never> { get }
-    /// Discrete engine event stream.
     var events: AnyPublisher<PlaybackEngineEvent, Never> { get }
 
-    /// Resolves and loads a track, optionally starting immediately.
+    /// Loads a track into the engine.
+    ///
+    /// - Parameters:
+    ///   - track: The track whose audio source should be resolved.
+    ///   - autoplay: Whether playback should begin after loading succeeds.
     func load(_ track: Track, autoplay: Bool)
-    /// Resumes the loaded item.
     func play()
-    /// Pauses the loaded item.
     func pause()
-    /// Seeks to a position in seconds.
     func seek(to time: TimeInterval)
 }
 
-/// Deterministic clock-driven engine used by previews and domain tests.
+/// A deterministic, clock-driven engine used by previews and tests.
 @MainActor
 final class SimulatedPlaybackEngine: PlaybackEngine {
     private let stateSubject = CurrentValueSubject<PlaybackEngineState, Never>(.init())
     private let eventSubject = PassthroughSubject<PlaybackEngineEvent, Never>()
     private var clockSubscription: AnyCancellable?
 
-    /// Read-only state publisher.
     var state: AnyPublisher<PlaybackEngineState, Never> {
         stateSubject.eraseToAnyPublisher()
     }
 
-    /// Read-only lifecycle event publisher.
     var events: AnyPublisher<PlaybackEngineEvent, Never> {
         eventSubject.eraseToAnyPublisher()
     }
 
-    /// Creates an engine with an injectable clock.
     init(clock: any PlaybackClock = SystemPlaybackClock()) {
         clockSubscription = clock.ticks
             .sink { [weak self] _ in
@@ -63,7 +60,6 @@ final class SimulatedPlaybackEngine: PlaybackEngine {
             }
     }
 
-    /// Loads track metadata without resolving real media.
     func load(_ track: Track, autoplay: Bool) {
         let duration = max(0, track.duration)
         stateSubject.send(
@@ -75,18 +71,15 @@ final class SimulatedPlaybackEngine: PlaybackEngine {
         )
     }
 
-    /// Starts simulated progress when a track is loaded.
     func play() {
         guard stateSubject.value.duration > 0 else { return }
         updateState { $0.isPlaying = true }
     }
 
-    /// Stops simulated progress.
     func pause() {
         updateState { $0.isPlaying = false }
     }
 
-    /// Clamps simulated seeking to the loaded duration.
     func seek(to time: TimeInterval) {
         updateState { state in
             state.elapsed = min(max(0, time), state.duration)

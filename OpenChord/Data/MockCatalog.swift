@@ -1,6 +1,5 @@
 import Foundation
 
-/// Deterministic in-memory catalog used by previews and isolated UI development.
 enum MockCatalog {
     private static let aurora = Artist(id: UUID(), name: "Aurora Lines")
     private static let atlas = Artist(id: UUID(), name: "The Midnight Atlas")

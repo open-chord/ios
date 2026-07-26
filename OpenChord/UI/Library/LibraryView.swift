@@ -1,10 +1,8 @@
 import SwiftUI
 
-/// Compact list-oriented view of every album in the connected catalog.
 struct LibraryView: View {
     @EnvironmentObject private var catalog: CatalogStore
 
-    /// Empty state or refreshable album list.
     var body: some View {
         Group {
             if catalog.albums.isEmpty {

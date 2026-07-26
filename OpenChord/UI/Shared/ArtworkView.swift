@@ -1,13 +1,9 @@
 import SwiftUI
 
-/// Square remote artwork with an animated, deterministic generated fallback.
 struct ArtworkView: View {
-    /// Remote source and fallback palette.
     let style: ArtworkStyle
-    /// Continuous clipping radius adjusted for each presentation size.
     var cornerRadius: CGFloat = 24
 
-    /// Artwork image, loading state, or generated fallback.
     var body: some View {
         GeometryReader { proxy in
             let side = min(proxy.size.width, proxy.size.height)
@@ -79,7 +75,6 @@ private extension ArtworkColor {
 }
 
 extension TimeInterval {
-    /// Formats playback seconds as a stable minute:second label.
     var playbackTime: String {
         guard isFinite else { return "0:00" }
         let totalSeconds = max(0, Int(self))
