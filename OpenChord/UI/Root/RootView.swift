@@ -28,10 +28,11 @@ struct RootView: View {
             if let track = player.currentTrack {
                 MiniPlayer(track: track)
                     // TabView's safe area includes the screen bottom but does
-                    // not subtract its own tab bar. Keep the two material
-                    // surfaces from overlapping.
+                    // not subtract its own tab bar. Its approximate 50-point
+                    // height plus eight points of breathing room keeps the two
+                    // glass surfaces visually distinct.
                     .padding(.horizontal, 10)
-                    .padding(.bottom, 50)
+                    .padding(.bottom, 58)
             }
         }
         .sheet(isPresented: $player.isPlayerPresented) {
@@ -83,7 +84,7 @@ private struct MiniPlayer: View {
             }
         }
         .padding(8)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .miniPlayerGlass()
         .overlay(alignment: .bottomLeading) {
             GeometryReader { proxy in
                 Capsule()
@@ -97,5 +98,24 @@ private struct MiniPlayer: View {
         .onTapGesture { player.isPlayerPresented = true }
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens the full player")
+    }
+}
+
+private extension View {
+    /// Uses native Liquid Glass where available while preserving the established
+    /// material treatment on the app's iOS 17 deployment target.
+    @ViewBuilder
+    func miniPlayerGlass() -> some View {
+        if #available(iOS 26.0, *) {
+            glassEffect(
+                .clear.interactive(),
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+        } else {
+            background(
+                .ultraThinMaterial,
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+        }
     }
 }
