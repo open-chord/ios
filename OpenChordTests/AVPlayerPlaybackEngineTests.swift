@@ -24,6 +24,27 @@ struct AVPlayerPlaybackEngineTests {
         #expect(recorder.state == .init(elapsed: 0, duration: 96, isPlaying: false))
     }
 
+    @Test("Autoplay activates a playback audio session")
+    func autoplayActivatesPlaybackAudioSession() {
+        let audioSession = PlaybackAudioSessionRecorder()
+        let engine = AVPlayerPlaybackEngine(audioSession: audioSession)
+
+        engine.load(makeTrack(duration: 96), autoplay: true)
+
+        #expect(audioSession.activationCount == 1)
+    }
+
+    @Test("Resuming playback reactivates the audio session")
+    func resumingReactivatesPlaybackAudioSession() {
+        let audioSession = PlaybackAudioSessionRecorder()
+        let engine = AVPlayerPlaybackEngine(audioSession: audioSession)
+        engine.load(makeTrack(duration: 96), autoplay: false)
+
+        engine.play()
+
+        #expect(audioSession.activationCount == 1)
+    }
+
     @Test("Seeking updates engine state immediately")
     func seekingUpdatesState() {
         let engine = AVPlayerPlaybackEngine()
@@ -49,5 +70,14 @@ struct AVPlayerPlaybackEngineTests {
         #expect(recorder.state.elapsed == 96)
         #expect(!recorder.state.isPlaying)
         #expect(recorder.events == [.finished])
+    }
+}
+
+@MainActor
+private final class PlaybackAudioSessionRecorder: PlaybackAudioSession {
+    private(set) var activationCount = 0
+
+    func activate() throws {
+        activationCount += 1
     }
 }

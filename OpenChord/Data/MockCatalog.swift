@@ -1,5 +1,6 @@
 import Foundation
 
+/// Deterministic preview catalog that exercises populated and empty lyric states.
 enum MockCatalog {
     private static let aurora = Artist(id: UUID(), name: "Aurora Lines")
     private static let atlas = Artist(id: UUID(), name: "The Midnight Atlas")
@@ -46,8 +47,8 @@ enum MockCatalog {
                 duration: 96,
                 audioSource: .bundled(resource: "OpenChordDemo", fileExtension: "m4a"),
                 artwork: artwork,
-                // Полный синхронизированный текст есть у демонстрационного трека.
-                // Для остальных песен пустой массив показывает честное empty state.
+                // Only the lead demo track has synchronized lyrics so previews
+                // exercise both the populated and honest empty states.
                 lyrics: index == 0 && title == "Afterglow" ? demoLyrics : []
             )
         }

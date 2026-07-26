@@ -1,11 +1,14 @@
 import SwiftUI
 
+/// Root navigation shell coordinating tabs, global sheets, and the persistent mini-player.
 struct RootView: View {
-    @EnvironmentObject private var player: PlaybackController
+    @Environment(PlaybackController.self) private var player
     @EnvironmentObject private var catalog: CatalogStore
     @State private var isShowingServerSettings = false
 
     var body: some View {
+        @Bindable var player = player
+
         TabView {
             NavigationStack {
                 HomeView {
@@ -24,10 +27,9 @@ struct RootView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let track = player.currentTrack {
                 MiniPlayer(track: track)
-                    // Safe-area всего TabView включает нижнюю область экрана, но
-                    // не вычитает из неё собственный tab bar. Поднимаем плеер на
-                    // стандартную высоту бара, чтобы два стеклянных слоя не
-                    // накладывались друг на друга.
+                    // TabView's safe area includes the screen bottom but does
+                    // not subtract its own tab bar. Keep the two material
+                    // surfaces from overlapping.
                     .padding(.horizontal, 10)
                     .padding(.bottom, 50)
             }
@@ -55,8 +57,9 @@ struct RootView: View {
     }
 }
 
+/// Persistent playback summary displayed above the tab bar.
 private struct MiniPlayer: View {
-    @EnvironmentObject private var player: PlaybackController
+    @Environment(PlaybackController.self) private var player
     let track: Track
 
     var body: some View {

@@ -7,6 +7,7 @@ import Foundation
 /// Downloads are keyed by the server track identifier. A completed download is
 /// discovered from disk rather than relying on transient in-memory state.
 final class TrackDownloadStore: ObservableObject {
+    /// Presentation state for a track's offline copy.
     enum State: Equatable {
         case idle
         case downloading
@@ -127,6 +128,7 @@ final class TrackDownloadStore: ObservableObject {
     }
 }
 
+/// Internal validation failures for completed download responses.
 private enum DownloadError: LocalizedError {
     case invalidResponse
 

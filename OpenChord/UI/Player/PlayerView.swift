@@ -1,10 +1,12 @@
 import SwiftUI
 
+/// Full-screen player presentation with now-playing and synchronized-lyrics pages.
 struct PlayerView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var player: PlaybackController
+    @Environment(PlaybackController.self) private var player
     @State private var page = PlayerPage.player
 
+    /// Sections available within the full player presentation.
     private enum PlayerPage: String, CaseIterable {
         case player = "Now Playing"
         case lyrics = "Lyrics"

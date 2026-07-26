@@ -2,6 +2,28 @@ import AVFoundation
 import Combine
 import Foundation
 
+/// Configures the process audio session for music playback.
+@MainActor
+protocol PlaybackAudioSession: AnyObject {
+    /// Activates a session that continues producing audio in silent mode.
+    func activate() throws
+}
+
+/// Production audio-session adapter backed by `AVAudioSession.sharedInstance()`.
+@MainActor
+final class SystemPlaybackAudioSession: PlaybackAudioSession {
+    private let session: AVAudioSession
+
+    init(session: AVAudioSession = .sharedInstance()) {
+        self.session = session
+    }
+
+    func activate() throws {
+        try session.setCategory(.playback, mode: .default)
+        try session.setActive(true)
+    }
+}
+
 /// `PlaybackEngine` backed by Apple's system media pipeline.
 ///
 /// This implementation intentionally owns all AVFoundation details so the
@@ -10,6 +32,7 @@ import Foundation
 final class AVPlayerPlaybackEngine: PlaybackEngine {
     private let player: AVPlayer
     private let bundle: Bundle
+    private let audioSession: any PlaybackAudioSession
     private let stateSubject = CurrentValueSubject<PlaybackEngineState, Never>(.init())
     private let eventSubject = PassthroughSubject<PlaybackEngineEvent, Never>()
     private var timeObserver: Any?
@@ -23,9 +46,14 @@ final class AVPlayerPlaybackEngine: PlaybackEngine {
         eventSubject.eraseToAnyPublisher()
     }
 
-    init(player: AVPlayer = AVPlayer(), bundle: Bundle = .main) {
+    init(
+        player: AVPlayer = AVPlayer(),
+        bundle: Bundle = .main,
+        audioSession: any PlaybackAudioSession = SystemPlaybackAudioSession()
+    ) {
         self.player = player
         self.bundle = bundle
+        self.audioSession = audioSession
         installTimeObserver()
     }
 
@@ -57,12 +85,14 @@ final class AVPlayerPlaybackEngine: PlaybackEngine {
         )
 
         if autoplay {
+            try? audioSession.activate()
             player.play()
         }
     }
 
     func play() {
         guard player.currentItem != nil else { return }
+        try? audioSession.activate()
         player.play()
         updateState { $0.isPlaying = true }
     }

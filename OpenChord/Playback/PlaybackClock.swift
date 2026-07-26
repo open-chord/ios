@@ -10,6 +10,7 @@ protocol PlaybackClock {
 }
 
 @MainActor
+/// Main-run-loop timer used by the simulated engine outside deterministic tests.
 struct SystemPlaybackClock: PlaybackClock {
     let interval: TimeInterval
 

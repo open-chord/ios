@@ -96,28 +96,34 @@ enum CatalogAPIError: LocalizedError {
     }
 }
 
+/// Minimal request body accepted by the catalog GraphQL endpoint.
 private struct GraphQLRequest: Encodable {
     let query: String
 }
 
+/// GraphQL response wrapper that keeps transport errors separate from payload decoding.
 private struct GraphQLEnvelope<Payload: Decodable>: Decodable {
     let data: Payload?
     let errors: [GraphQLError]?
 }
 
+/// Server-reported GraphQL error fields used by the client.
 private struct GraphQLError: Decodable {
     let message: String
 }
 
+/// Root payload for the catalog query.
 private struct CatalogPayload: Decodable {
     let albums: [AlbumDTO]
 }
 
+/// Wire representation of an artist.
 private struct ArtistDTO: Decodable {
     let id: UUID
     let name: String
 }
 
+/// Wire representation responsible for mapping an album aggregate to the domain.
 private struct AlbumDTO: Decodable {
     let id: UUID
     let title: String
@@ -143,6 +149,7 @@ private struct AlbumDTO: Decodable {
     }
 }
 
+/// Wire representation responsible for resolving a track's media URL.
 private struct TrackDTO: Decodable {
     let id: UUID
     let title: String
@@ -169,6 +176,7 @@ private struct TrackDTO: Decodable {
     }
 }
 
+/// Millisecond-based lyric interval returned by the backend.
 private struct LyricLineDTO: Decodable {
     let id: UUID
     let text: String

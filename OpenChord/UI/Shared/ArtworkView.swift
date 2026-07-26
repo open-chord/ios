@@ -1,5 +1,9 @@
 import SwiftUI
 
+/// Square album artwork that falls back to a deterministic gradient placeholder.
+///
+/// Remote loading failures intentionally leave the placeholder visible instead
+/// of exposing a broken-image state to the user.
 struct ArtworkView: View {
     let style: ArtworkStyle
     var cornerRadius: CGFloat = 24
@@ -74,6 +78,7 @@ private extension ArtworkColor {
     }
 }
 
+/// Playback-oriented formatting helpers for durations expressed in seconds.
 extension TimeInterval {
     var playbackTime: String {
         guard isFinite else { return "0:00" }

@@ -105,6 +105,7 @@ final class CatalogStore: ObservableObject {
     }
 }
 
+/// Validation failures produced before changing the configured server origin.
 enum ServerAddressError: LocalizedError {
     case invalid
 

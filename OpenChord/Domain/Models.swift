@@ -95,6 +95,7 @@ struct ArtworkStyle: Hashable {
     }
 }
 
+/// Semantic colors available to deterministic artwork placeholders.
 enum ArtworkColor: String, Hashable {
     case violet, indigo, blue, cyan, mint, orange, pink, red
 

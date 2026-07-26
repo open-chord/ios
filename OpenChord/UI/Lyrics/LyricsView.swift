@@ -1,7 +1,11 @@
 import SwiftUI
 
+/// Synchronized lyrics view that follows playback and supports tap-to-seek.
+///
+/// Automatic scrolling occurs only when the active lyric changes, avoiding
+/// timer-driven movement that would fight manual scrolling.
 struct LyricsView: View {
-    @EnvironmentObject private var player: PlaybackController
+    @Environment(PlaybackController.self) private var player
     let track: Track
 
     var body: some View {
@@ -25,9 +29,6 @@ struct LyricsView: View {
                 }
                 .onChange(of: activeLine?.id) { _, newID in
                     guard let newID else { return }
-                    // Программная прокрутка реагирует только на смену строки,
-                    // а не на каждый тик таймера. Так текст движется спокойно и
-                    // не борется с пользователем, если он листает вручную.
                     withAnimation(.easeInOut(duration: 0.55)) {
                         proxy.scrollTo(newID, anchor: .center)
                     }

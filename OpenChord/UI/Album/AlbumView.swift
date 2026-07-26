@@ -1,7 +1,8 @@
 import SwiftUI
 
+/// Album detail screen with ordered tracks and offline-download actions.
 struct AlbumView: View {
-    @EnvironmentObject private var player: PlaybackController
+    @Environment(PlaybackController.self) private var player
     @EnvironmentObject private var downloads: TrackDownloadStore
     let album: Album
 
@@ -45,7 +46,7 @@ struct AlbumView: View {
                 .buttonStyle(.bordered)
                 .disabled(album.tracks.isEmpty || isDownloadingAlbum)
 
-                VStack(spacing: 0) {
+                LazyVStack(spacing: 0) {
                     ForEach(Array(album.tracks.enumerated()), id: \.element.id) { index, track in
                         TrackRow(number: index + 1, track: track) {
                             player.play(
@@ -90,6 +91,7 @@ struct AlbumView: View {
     }
 }
 
+/// A track action row that reflects playback and download state.
 private struct TrackRow: View {
     @EnvironmentObject private var downloads: TrackDownloadStore
     let number: Int

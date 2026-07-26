@@ -13,10 +13,6 @@ enum PlaybackEngineEvent: Equatable {
     case finished
 }
 
-/// The media boundary used by `PlaybackController`.
-///
-/// Implementations own media-specific state and side effects. The controller
-/// remains responsible for queue policy and presentation state.
 @MainActor
 /// The media-playing boundary used by ``PlaybackController``.
 ///
@@ -33,13 +29,24 @@ protocol PlaybackEngine: AnyObject {
     ///   - track: The track whose audio source should be resolved.
     ///   - autoplay: Whether playback should begin after loading succeeds.
     func load(_ track: Track, autoplay: Bool)
+
+    /// Resumes the loaded item when one is available.
     func play()
+
+    /// Pauses the loaded item without changing its position.
     func pause()
+
+    /// Moves playback to a time clamped to the loaded item's duration.
+    ///
+    /// - Parameter time: Requested offset in seconds.
     func seek(to time: TimeInterval)
 }
 
-/// A deterministic, clock-driven engine used by previews and tests.
 @MainActor
+/// A deterministic, clock-driven engine used by previews and tests.
+///
+/// The engine advances by one 250-millisecond step per clock tick and emits a
+/// single completion event when it reaches the loaded track's duration.
 final class SimulatedPlaybackEngine: PlaybackEngine {
     private let stateSubject = CurrentValueSubject<PlaybackEngineState, Never>(.init())
     private let eventSubject = PassthroughSubject<PlaybackEngineEvent, Never>()

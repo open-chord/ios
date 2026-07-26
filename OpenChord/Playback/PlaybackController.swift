@@ -1,20 +1,25 @@
 import Combine
 import Foundation
+import Observation
 
 @MainActor
 /// Coordinates the playback queue and exposes presentation-ready player state.
 ///
 /// The controller owns queue semantics while the injected ``PlaybackEngine``
 /// owns media playback. Keeping those responsibilities separate makes queue
-/// behavior deterministic in tests.
-final class PlaybackController: ObservableObject {
-    @Published private(set) var currentTrack: Track?
-    @Published private(set) var queue: [Track] = []
-    @Published private(set) var isPlaying = false
-    @Published private(set) var elapsed: TimeInterval = 0
-    @Published var isPlayerPresented = false
+/// behavior deterministic in tests. Observation tracks each property
+/// independently so playback ticks do not invalidate unrelated catalog views.
+@Observable
+final class PlaybackController {
+    private(set) var currentTrack: Track?
+    private(set) var queue: [Track] = []
+    private(set) var isPlaying = false
+    private(set) var elapsed: TimeInterval = 0
+    var isPlayerPresented = false
 
+    @ObservationIgnored
     private let engine: any PlaybackEngine
+    @ObservationIgnored
     private var subscriptions = Set<AnyCancellable>()
 
     init(engine: any PlaybackEngine = AVPlayerPlaybackEngine()) {
@@ -72,8 +77,8 @@ final class PlaybackController: ObservableObject {
     }
 
     func playPrevious() {
-        // Поведение знакомо по обычным плеерам: после нескольких секунд кнопка
-        // возвращает начало трека, а не неожиданно переключает композицию.
+        // Match system music-player semantics: after meaningful progress,
+        // previous restarts the current item instead of changing the queue.
         if elapsed > 4 {
             seek(to: 0)
         } else {
