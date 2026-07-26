@@ -2,7 +2,9 @@ import Combine
 import Foundation
 
 @MainActor
+/// Persists offline audio and resolves downloaded copies for playback.
 final class TrackDownloadStore: ObservableObject {
+    /// UI-visible lifecycle of one track download.
     enum State: Equatable {
         case idle
         case downloading
@@ -10,12 +12,15 @@ final class TrackDownloadStore: ObservableObject {
         case failed
     }
 
+    /// Transient per-track states; completed downloads are also discovered from disk.
     @Published private(set) var states: [UUID: State] = [:]
+    /// Latest user-facing download failure.
     @Published var errorMessage: String?
 
     private let session: URLSession
     private let downloadsDirectory: URL
 
+    /// Creates a store with injectable networking and filesystem locations for tests.
     init(
         session: URLSession = .shared,
         fileManager: FileManager = .default,
@@ -30,6 +35,7 @@ final class TrackDownloadStore: ObservableObject {
         try? fileManager.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
     }
 
+    /// Returns persisted or transient state for a track.
     func state(for track: Track) -> State {
         if localURL(for: track) != nil {
             return .downloaded
@@ -37,6 +43,7 @@ final class TrackDownloadStore: ObservableObject {
         return states[track.id] ?? .idle
     }
 
+    /// Downloads one remote track into Application Support.
     func download(_ track: Track) async {
         guard state(for: track) != .downloading, localURL(for: track) == nil else { return }
         guard case let .remote(remoteURL) = track.audioSource else { return }
@@ -63,17 +70,20 @@ final class TrackDownloadStore: ObservableObject {
         }
     }
 
+    /// Downloads tracks sequentially to avoid saturating a self-hosted server.
     func download(_ tracks: [Track]) async {
         for track in tracks where state(for: track) != .downloaded {
             await download(track)
         }
     }
 
+    /// Returns a track that prefers its downloaded local file when available.
     func playable(_ track: Track) -> Track {
         guard let localURL = localURL(for: track) else { return track }
         return track.using(audioSource: .remote(localURL))
     }
 
+    /// Resolves a complete queue to local copies where available.
     func playable(_ tracks: [Track]) -> [Track] {
         tracks.map(playable)
     }

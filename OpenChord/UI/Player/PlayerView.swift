@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Full-screen now-playing experience backed by shared playback state.
 struct PlayerView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var player: PlaybackController
@@ -10,6 +11,7 @@ struct PlayerView: View {
         case lyrics = "Lyrics"
     }
 
+    /// Artwork, metadata, timeline, transport controls, and lyrics.
     var body: some View {
         NavigationStack {
             Group {

@@ -1,16 +1,22 @@
 import Foundation
 
+/// Abstraction used by catalog state to load albums from a configurable server.
 protocol CatalogLoading: Sendable {
+    /// Fetches the complete catalog from the supplied OpenChord server.
     func fetchAlbums(from serverURL: URL) async throws -> [Album]
 }
 
+/// GraphQL-backed implementation of ``CatalogLoading``.
 struct CatalogAPIClient: CatalogLoading {
+    /// Injectable session used for production networking and deterministic tests.
     private let session: URLSession
 
+    /// Creates a client backed by the shared or a test-specific URL session.
     init(session: URLSession = .shared) {
         self.session = session
     }
 
+    /// Executes the catalog query and maps transport DTOs into domain aggregates.
     func fetchAlbums(from serverURL: URL) async throws -> [Album] {
         let endpoint = serverURL.appending(path: "graphql")
         var request = URLRequest(url: endpoint)
@@ -61,11 +67,13 @@ struct CatalogAPIClient: CatalogLoading {
     }
 }
 
+/// Failures exposed by the catalog transport boundary.
 enum CatalogAPIError: LocalizedError {
     case invalidResponse
     case httpStatus(Int)
     case graphQL(String)
 
+    /// Human-readable message suitable for conversion into catalog UI state.
     var errorDescription: String? {
         switch self {
         case .invalidResponse:

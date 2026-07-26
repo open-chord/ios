@@ -1,9 +1,12 @@
 import SwiftUI
 
+/// Synchronized lyric view that follows the shared playback position.
 struct LyricsView: View {
     @EnvironmentObject private var player: PlaybackController
+    /// Track whose timestamped lines are rendered.
     let track: Track
 
+    /// Current, surrounding, or empty lyric presentation.
     var body: some View {
         if track.lyrics.isEmpty {
             ContentUnavailableView(

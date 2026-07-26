@@ -1,6 +1,7 @@
 import SwiftUI
 
 @main
+/// Application composition root for shared catalog, download, and playback state.
 struct OpenChordApp: App {
     // PlaybackController живёт на уровне приложения, потому что музыка не должна
     // останавливаться при переходе между вкладками или закрытии экрана альбома.
@@ -9,6 +10,7 @@ struct OpenChordApp: App {
     @StateObject private var catalog = CatalogStore()
     @StateObject private var downloads = TrackDownloadStore()
 
+    /// Main application scene with shared environment objects.
     var body: some Scene {
         WindowGroup {
             RootView()
