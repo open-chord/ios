@@ -208,7 +208,7 @@ private extension ArtworkStyle {
     static func forAlbum(_ id: UUID, remoteURL: URL?) -> ArtworkStyle {
         let variants: [ArtworkStyle] = [
             ArtworkStyle(symbol: "sparkles", colors: [.violet, .pink, .orange]),
-            ArtworkStyle(symbol: "moon.stars.fill", colors: [.indigo, .blue, .cyan]),
+            ArtworkStyle(symbol: "moon.fill", colors: [.indigo, .blue, .cyan]),
             ArtworkStyle(symbol: "waveform", colors: [.red, .pink, .violet]),
             ArtworkStyle(symbol: "music.note", colors: [.blue, .cyan, .mint]),
         ]

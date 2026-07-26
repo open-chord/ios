@@ -17,7 +17,7 @@ enum MockCatalog {
             title: "Northern Rooms",
             artist: atlas,
             year: 2025,
-            artwork: ArtworkStyle(symbol: "moon.stars.fill", colors: [.indigo, .blue, .cyan]),
+            artwork: ArtworkStyle(symbol: "moon.fill", colors: [.indigo, .blue, .cyan]),
             trackNames: ["Open Window", "Polar Light", "Quiet Maps", "Blue Hour"]
         ),
         makeAlbum(
