@@ -20,7 +20,7 @@ struct PlaybackControllerTests {
     }
 
     @Test("Engine state drives the public playback state")
-    func engineDrivesPlaybackState() {
+    func engineDrivesPlaybackState() async {
         let engine = ManualPlaybackEngine()
         let track = makeTrack(duration: 10)
         let nowPlaying = NowPlayingManagerRecorder()
@@ -28,6 +28,7 @@ struct PlaybackControllerTests {
         controller.play(track: track, in: [track])
 
         engine.send(elapsed: 1, isPlaying: true)
+        await Task.yield()
 
         #expect(controller.elapsed == 1)
         #expect(controller.progress == 0.1)
