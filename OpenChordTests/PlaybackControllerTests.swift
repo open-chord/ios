@@ -1,4 +1,5 @@
 import Testing
+import UIKit
 @testable import OpenChord
 
 @Suite("Playback state", .serialized)
@@ -130,5 +131,20 @@ struct PlaybackControllerTests {
         handlers.play()
         #expect(controller.isPlaying)
         #expect(nowPlaying.isPlaying == true)
+    }
+
+    @Test("System artwork handler supports MediaPlayer background callbacks")
+    func artworkHandlerSupportsBackgroundCallbacks() async {
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 2, height: 2)).image { context in
+            UIColor.red.setFill()
+            context.fill(CGRect(origin: .zero, size: CGSize(width: 2, height: 2)))
+        }
+        let imageProvider = SystemNowPlayingManager.artworkImageProvider(for: image)
+
+        let renderedSize = await Task.detached {
+            imageProvider(CGSize(width: 1, height: 1)).size
+        }.value
+
+        #expect(renderedSize == image.size)
     }
 }

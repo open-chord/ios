@@ -138,12 +138,26 @@ final class SystemNowPlayingManager: NowPlayingManaging {
                 var information = infoCenter.nowPlayingInfo
             else { return }
 
-            information[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(
-                boundsSize: image.size,
-                requestHandler: { _ in image }
-            )
+            information[MPMediaItemPropertyArtwork] = Self.makeArtwork(from: image)
             infoCenter.nowPlayingInfo = information
         }
+    }
+
+    /// Builds MediaPlayer's artwork callback outside the manager's main-actor
+    /// isolation. MediaPlayer invokes this callback on an internal background
+    /// queue, so an actor-inherited closure traps in Swift's runtime executor
+    /// check on physical devices.
+    nonisolated static func makeArtwork(from image: UIImage) -> MPMediaItemArtwork {
+        MPMediaItemArtwork(
+            boundsSize: image.size,
+            requestHandler: artworkImageProvider(for: image)
+        )
+    }
+
+    nonisolated static func artworkImageProvider(
+        for image: UIImage
+    ) -> @Sendable (CGSize) -> UIImage {
+        { @Sendable _ in image }
     }
 }
 
