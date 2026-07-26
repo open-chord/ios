@@ -1,6 +1,151 @@
 import Combine
 import Foundation
+import MediaPlayer
 import Observation
+import UIKit
+
+/// Commands exposed by the system's Lock Screen and Control Center surfaces.
+@MainActor
+struct NowPlayingCommandHandlers {
+    let play: () -> Void
+    let pause: () -> Void
+    let next: () -> Void
+    let previous: () -> Void
+    let seek: (TimeInterval) -> Void
+}
+
+/// Publishes playback metadata and connects system media commands to the app.
+@MainActor
+protocol NowPlayingManaging: AnyObject {
+    func install(_ handlers: NowPlayingCommandHandlers)
+    func publish(track: Track, queueIndex: Int, queueCount: Int)
+    func update(elapsed: TimeInterval, isPlaying: Bool)
+}
+
+/// MediaPlayer-backed implementation used on physical devices.
+@MainActor
+final class SystemNowPlayingManager: NowPlayingManaging {
+    private let infoCenter: MPNowPlayingInfoCenter
+    private let commandCenter: MPRemoteCommandCenter
+    private let session: URLSession
+    private var commandTargets: [(MPRemoteCommand, Any)] = []
+    private var artworkTask: Task<Void, Never>?
+    private var publishedTrackID: UUID?
+
+    init(
+        infoCenter: MPNowPlayingInfoCenter = .default(),
+        commandCenter: MPRemoteCommandCenter = .shared(),
+        session: URLSession = .shared
+    ) {
+        self.infoCenter = infoCenter
+        self.commandCenter = commandCenter
+        self.session = session
+    }
+
+    isolated deinit {
+        artworkTask?.cancel()
+        for (command, target) in commandTargets {
+            command.removeTarget(target)
+        }
+    }
+
+    func install(_ handlers: NowPlayingCommandHandlers) {
+        commandTargets.append(
+            (
+                commandCenter.playCommand,
+                commandCenter.playCommand.addTarget { _ in
+                    Task { @MainActor in handlers.play() }
+                    return .success
+                }
+            )
+        )
+        commandTargets.append(
+            (
+                commandCenter.pauseCommand,
+                commandCenter.pauseCommand.addTarget { _ in
+                    Task { @MainActor in handlers.pause() }
+                    return .success
+                }
+            )
+        )
+        commandTargets.append(
+            (
+                commandCenter.nextTrackCommand,
+                commandCenter.nextTrackCommand.addTarget { _ in
+                    Task { @MainActor in handlers.next() }
+                    return .success
+                }
+            )
+        )
+        commandTargets.append(
+            (
+                commandCenter.previousTrackCommand,
+                commandCenter.previousTrackCommand.addTarget { _ in
+                    Task { @MainActor in handlers.previous() }
+                    return .success
+                }
+            )
+        )
+        commandTargets.append(
+            (
+                commandCenter.changePlaybackPositionCommand,
+                commandCenter.changePlaybackPositionCommand.addTarget { event in
+                    guard let positionEvent = event as? MPChangePlaybackPositionCommandEvent else {
+                        return .commandFailed
+                    }
+                    Task { @MainActor in handlers.seek(positionEvent.positionTime) }
+                    return .success
+                }
+            )
+        )
+    }
+
+    func publish(track: Track, queueIndex: Int, queueCount: Int) {
+        publishedTrackID = track.id
+        artworkTask?.cancel()
+        infoCenter.nowPlayingInfo = [
+            MPMediaItemPropertyTitle: track.title,
+            MPMediaItemPropertyArtist: track.artistName,
+            MPMediaItemPropertyAlbumTitle: track.albumTitle,
+            MPMediaItemPropertyPlaybackDuration: track.duration,
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: 0,
+            MPNowPlayingInfoPropertyPlaybackRate: 1,
+            MPNowPlayingInfoPropertyMediaType: MPNowPlayingInfoMediaType.audio.rawValue,
+            MPNowPlayingInfoPropertyPlaybackQueueIndex: queueIndex,
+            MPNowPlayingInfoPropertyPlaybackQueueCount: queueCount,
+        ]
+        loadArtwork(for: track)
+    }
+
+    func update(elapsed: TimeInterval, isPlaying: Bool) {
+        guard var information = infoCenter.nowPlayingInfo else { return }
+        information[MPNowPlayingInfoPropertyElapsedPlaybackTime] = elapsed
+        information[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1 : 0
+        infoCenter.nowPlayingInfo = information
+    }
+
+    private func loadArtwork(for track: Track) {
+        guard let artworkURL = track.artwork.remoteURL else { return }
+        artworkTask = Task { [weak self] in
+            guard
+                let self,
+                let (data, response) = try? await session.data(from: artworkURL),
+                !Task.isCancelled,
+                let httpResponse = response as? HTTPURLResponse,
+                (200..<300).contains(httpResponse.statusCode),
+                let image = UIImage(data: data),
+                publishedTrackID == track.id,
+                var information = infoCenter.nowPlayingInfo
+            else { return }
+
+            information[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(
+                boundsSize: image.size,
+                requestHandler: { _ in image }
+            )
+            infoCenter.nowPlayingInfo = information
+        }
+    }
+}
 
 @MainActor
 /// Coordinates the playback queue and exposes presentation-ready player state.
@@ -20,15 +165,22 @@ final class PlaybackController {
     @ObservationIgnored
     private let engine: any PlaybackEngine
     @ObservationIgnored
+    private let nowPlaying: any NowPlayingManaging
+    @ObservationIgnored
     private var subscriptions = Set<AnyCancellable>()
 
-    init(engine: any PlaybackEngine = AVPlayerPlaybackEngine()) {
+    init(
+        engine: any PlaybackEngine = AVPlayerPlaybackEngine(),
+        nowPlaying: any NowPlayingManaging = SystemNowPlayingManager()
+    ) {
         self.engine = engine
+        self.nowPlaying = nowPlaying
 
         engine.state
             .sink { [weak self] state in
                 self?.elapsed = state.elapsed
                 self?.isPlaying = state.isPlaying
+                self?.nowPlaying.update(elapsed: state.elapsed, isPlaying: state.isPlaying)
             }
             .store(in: &subscriptions)
 
@@ -39,6 +191,16 @@ final class PlaybackController {
                 }
             }
             .store(in: &subscriptions)
+
+        nowPlaying.install(
+            NowPlayingCommandHandlers(
+                play: { [weak self] in self?.resume() },
+                pause: { [weak self] in self?.pause() },
+                next: { [weak self] in self?.playNext() },
+                previous: { [weak self] in self?.playPrevious() },
+                seek: { [weak self] time in self?.seek(to: time) }
+            )
+        )
     }
 
     /// Selects a track and establishes the queue used by next and previous.
@@ -52,18 +214,19 @@ final class PlaybackController {
         if currentTrack?.id != track.id {
             currentTrack = track
             queue = tracks
+            publishNowPlaying()
             engine.load(track, autoplay: true)
         } else {
-            engine.play()
+            resume()
         }
     }
 
     func togglePlayback() {
         guard currentTrack != nil else { return }
         if isPlaying {
-            engine.pause()
+            pause()
         } else {
-            engine.play()
+            resume()
         }
     }
 
@@ -101,6 +264,25 @@ final class PlaybackController {
         let newIndex = (currentIndex + offset + queue.count) % queue.count
         let nextTrack = queue[newIndex]
         self.currentTrack = nextTrack
+        publishNowPlaying()
         engine.load(nextTrack, autoplay: true)
+    }
+
+    private func resume() {
+        guard currentTrack != nil else { return }
+        engine.play()
+    }
+
+    private func pause() {
+        guard currentTrack != nil else { return }
+        engine.pause()
+    }
+
+    private func publishNowPlaying() {
+        guard
+            let currentTrack,
+            let queueIndex = queue.firstIndex(where: { $0.id == currentTrack.id })
+        else { return }
+        nowPlaying.publish(track: currentTrack, queueIndex: queueIndex, queueCount: queue.count)
     }
 }

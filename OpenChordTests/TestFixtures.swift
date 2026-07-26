@@ -81,6 +81,31 @@ final class PlaybackEngineRecorder {
     }
 }
 
+@MainActor
+final class NowPlayingManagerRecorder: NowPlayingManaging {
+    private(set) var handlers: NowPlayingCommandHandlers?
+    private(set) var publishedTrack: Track?
+    private(set) var publishedQueueIndex: Int?
+    private(set) var publishedQueueCount: Int?
+    private(set) var elapsed: TimeInterval?
+    private(set) var isPlaying: Bool?
+
+    func install(_ handlers: NowPlayingCommandHandlers) {
+        self.handlers = handlers
+    }
+
+    func publish(track: Track, queueIndex: Int, queueCount: Int) {
+        publishedTrack = track
+        publishedQueueIndex = queueIndex
+        publishedQueueCount = queueCount
+    }
+
+    func update(elapsed: TimeInterval, isPlaying: Bool) {
+        self.elapsed = elapsed
+        self.isPlaying = isPlaying
+    }
+}
+
 func makeTrack(
     title: String = "Test Track",
     duration: TimeInterval = 10,
