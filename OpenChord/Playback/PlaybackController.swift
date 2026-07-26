@@ -239,6 +239,7 @@ final class PlaybackController {
     func seek(to time: TimeInterval) {
         guard currentTrack != nil else { return }
         engine.seek(to: time)
+        nowPlaying.update(elapsed: elapsed, isPlaying: isPlaying)
     }
 
     func playNext() {
@@ -277,11 +278,13 @@ final class PlaybackController {
     private func resume() {
         guard currentTrack != nil else { return }
         engine.play()
+        nowPlaying.update(elapsed: elapsed, isPlaying: true)
     }
 
     private func pause() {
         guard currentTrack != nil else { return }
         engine.pause()
+        nowPlaying.update(elapsed: elapsed, isPlaying: false)
     }
 
     private func publishNowPlaying() {
@@ -295,12 +298,5 @@ final class PlaybackController {
     private func apply(_ state: PlaybackEngineState) {
         elapsed = state.elapsed
         isPlaying = state.isPlaying
-
-        // MediaPlayer validates dispatch-queue identity rather than only the
-        // executing thread. Local AVPlayer items can publish synchronously from
-        // a non-main queue context that is executing on the main thread.
-        DispatchQueue.main.async { [weak self] in
-            self?.nowPlaying.update(elapsed: state.elapsed, isPlaying: state.isPlaying)
-        }
     }
 }

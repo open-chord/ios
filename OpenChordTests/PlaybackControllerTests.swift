@@ -20,7 +20,7 @@ struct PlaybackControllerTests {
     }
 
     @Test("Engine state drives the public playback state")
-    func engineDrivesPlaybackState() async {
+    func engineDrivesPlaybackState() {
         let engine = ManualPlaybackEngine()
         let track = makeTrack(duration: 10)
         let nowPlaying = NowPlayingManagerRecorder()
@@ -28,12 +28,9 @@ struct PlaybackControllerTests {
         controller.play(track: track, in: [track])
 
         engine.send(elapsed: 1, isPlaying: true)
-        await Task.yield()
 
         #expect(controller.elapsed == 1)
         #expect(controller.progress == 0.1)
-        #expect(nowPlaying.elapsed == 1)
-        #expect(nowPlaying.isPlaying == true)
     }
 
     @Test("Seek clamps values to the playable range")
@@ -128,8 +125,10 @@ struct PlaybackControllerTests {
 
         handlers.pause()
         #expect(!controller.isPlaying)
+        #expect(nowPlaying.isPlaying == false)
 
         handlers.play()
         #expect(controller.isPlaying)
+        #expect(nowPlaying.isPlaying == true)
     }
 }
