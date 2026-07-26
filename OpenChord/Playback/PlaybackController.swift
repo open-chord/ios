@@ -178,16 +178,32 @@ final class PlaybackController {
 
         engine.state
             .sink { [weak self] state in
-                self?.elapsed = state.elapsed
-                self?.isPlaying = state.isPlaying
-                self?.nowPlaying.update(elapsed: state.elapsed, isPlaying: state.isPlaying)
+                if Thread.isMainThread {
+                    self?.apply(state)
+                } else {
+                    // Combine preserves the publisher's delivery queue. AVPlayer
+                    // may publish while handling media work off-main even though
+                    // the engine API is main-actor isolated, while MediaPlayer
+                    // asserts that Now Playing mutations execute on main.
+                    DispatchQueue.main.async { [weak self] in
+                        self?.apply(state)
+                    }
+                }
             }
             .store(in: &subscriptions)
 
         engine.events
             .sink { [weak self] event in
-                if event == .finished {
+                guard event == .finished else {
+                    return
+                }
+
+                if Thread.isMainThread {
                     self?.playNext()
+                } else {
+                    DispatchQueue.main.async { [weak self] in
+                        self?.playNext()
+                    }
                 }
             }
             .store(in: &subscriptions)
@@ -284,5 +300,12 @@ final class PlaybackController {
             let queueIndex = queue.firstIndex(where: { $0.id == currentTrack.id })
         else { return }
         nowPlaying.publish(track: currentTrack, queueIndex: queueIndex, queueCount: queue.count)
+    }
+
+    private func apply(_ state: PlaybackEngineState) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        elapsed = state.elapsed
+        isPlaying = state.isPlaying
+        nowPlaying.update(elapsed: state.elapsed, isPlaying: state.isPlaying)
     }
 }
