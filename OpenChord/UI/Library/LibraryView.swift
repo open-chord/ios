@@ -60,7 +60,7 @@ struct LibraryView: View {
                 }
             }
         }
-        .background(Color.black)
+        .background(Color(uiColor: .systemBackground))
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: Album.self) { AlbumView(album: $0) }
         .navigationDestination(for: Artist.self) { artist in
@@ -168,10 +168,16 @@ struct LibraryView: View {
                                 .padding(.horizontal, 16)
                                 .frame(height: 36)
                                 .background(
-                                    section == item ? Color.white : Color.white.opacity(0.12),
+                                    section == item
+                                        ? Color.primary
+                                        : Color.primary.opacity(0.1),
                                     in: Capsule()
                                 )
-                                .foregroundStyle(section == item ? .black : .white)
+                                .foregroundStyle(
+                                    section == item
+                                        ? Color(uiColor: .systemBackground)
+                                        : Color.primary
+                                )
                         }
                         .buttonStyle(.plain)
                     }
@@ -399,7 +405,7 @@ private struct ArtistView: View {
             }
             .padding()
         }
-        .background(Color.black)
+        .background(Color(uiColor: .systemBackground))
         .navigationTitle(artist.name)
         .navigationBarTitleDisplayMode(.large)
     }

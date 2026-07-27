@@ -27,7 +27,7 @@ struct HomeView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black)
+        .background(Color(uiColor: .systemBackground))
         .navigationTitle("Home")
         .navigationBarTitleDisplayMode(.large)
         .navigationDestination(for: Album.self) { AlbumView(album: $0) }

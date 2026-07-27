@@ -32,7 +32,7 @@ struct CreatePlaylistView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 48)
         }
-        .background(Color.black)
+        .background(Color(uiColor: .systemBackground))
         .navigationTitle("New Playlist")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

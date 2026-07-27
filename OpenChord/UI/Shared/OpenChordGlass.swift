@@ -27,12 +27,12 @@ extension View {
     func openChordProminentGlassButton() -> some View {
         if #available(iOS 26.0, *) {
             buttonStyle(.glassProminent)
-                .tint(.white)
-                .foregroundStyle(.black)
+                .tint(Color.primary)
+                .foregroundStyle(Color(uiColor: .systemBackground))
         } else {
             buttonStyle(.borderedProminent)
-                .tint(.white)
-                .foregroundStyle(.black)
+                .tint(Color.primary)
+                .foregroundStyle(Color(uiColor: .systemBackground))
         }
     }
 }

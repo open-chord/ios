@@ -25,7 +25,7 @@ struct PlaylistView: View {
                 )
             }
         }
-        .background(Color.black)
+        .background(Color(uiColor: .systemBackground))
         .navigationTitle(playlist?.name ?? "Playlist")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
