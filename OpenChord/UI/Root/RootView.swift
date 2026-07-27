@@ -17,21 +17,23 @@ struct RootView: View {
         @Bindable var player = player
 
         if #available(iOS 26.0, *) {
-            if let track = player.currentTrack {
-                modernTabShell
-                    .tabBarMinimizeBehavior(.onScrollDown)
-                    .tabViewBottomAccessory {
+            modernTabShell
+                .tabBarMinimizeBehavior(.onScrollDown)
+                .tabViewBottomAccessory {
+                    if let track = player.currentTrack {
                         AdaptiveMiniPlayer(track: track)
+                    } else {
+                        AdaptiveEmptyPlaybackAccessory()
                     }
-            } else {
-                modernTabShell
-                    .tabBarMinimizeBehavior(.onScrollDown)
-            }
+                }
         } else if #available(iOS 18.0, *) {
             modernTabShell
                 .safeAreaInset(edge: .bottom, spacing: 8) {
                     if let track = player.currentTrack {
                         LegacyMiniPlayer(track: track)
+                            .padding(.horizontal, 10)
+                    } else {
+                        LegacyEmptyPlaybackAccessory()
                             .padding(.horizontal, 10)
                     }
                 }
@@ -40,6 +42,9 @@ struct RootView: View {
                 .safeAreaInset(edge: .bottom, spacing: 8) {
                     if let track = player.currentTrack {
                         LegacyMiniPlayer(track: track)
+                            .padding(.horizontal, 10)
+                    } else {
+                        LegacyEmptyPlaybackAccessory()
                             .padding(.horizontal, 10)
                     }
                 }
@@ -114,6 +119,54 @@ struct RootView: View {
     }
 }
 
+/// Stable accessory that follows the system's expanded or inline placement.
+@available(iOS 26.0, *)
+private struct AdaptiveEmptyPlaybackAccessory: View {
+    @Environment(\.tabViewBottomAccessoryPlacement) private var accessoryPlacement
+
+    var body: some View {
+        EmptyPlaybackAccessoryContent(isCompact: accessoryPlacement == .inline)
+    }
+}
+
+/// Stable fallback shown before the first track is selected.
+private struct LegacyEmptyPlaybackAccessory: View {
+    var body: some View {
+        EmptyPlaybackAccessoryContent(isCompact: false)
+            .background(
+                .ultraThinMaterial,
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+    }
+}
+
+/// Shared empty-playback presentation.
+private struct EmptyPlaybackAccessoryContent: View {
+    let isCompact: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "music.note")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+                .frame(
+                    width: isCompact ? 28 : 42,
+                    height: isCompact ? 28 : 42
+                )
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+
+            Text("Nothing Playing")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Spacer()
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, isCompact ? 3 : 6)
+        .accessibilityElement(children: .combine)
+    }
+}
+
 /// Playback summary that follows the system accessory's expanded or inline placement.
 @available(iOS 26.0, *)
 private struct AdaptiveMiniPlayer: View {
@@ -147,14 +200,10 @@ private struct MiniPlayerContent: View {
 
     var body: some View {
         HStack(spacing: isCompact ? 8 : 12) {
-            ArtworkView(
+            MiniPlayerArtwork(
                 style: track.artwork,
-                cornerRadius: isCompact ? 6 : 10,
-                showsShadow: false
-            )
-            .frame(
-                width: isCompact ? 30 : 52,
-                height: isCompact ? 30 : 52
+                size: isCompact ? 30 : 52,
+                cornerRadius: isCompact ? 6 : 10
             )
 
             VStack(alignment: .leading, spacing: 2) {
@@ -197,6 +246,38 @@ private struct MiniPlayerContent: View {
         .onTapGesture { player.isPlayerPresented = true }
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens the full player")
+    }
+}
+
+/// Fixed-size artwork that cannot inherit the large-card layout or shadow.
+private struct MiniPlayerArtwork: View {
+    let style: ArtworkStyle
+    let size: CGFloat
+    let cornerRadius: CGFloat
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(.quaternary)
+
+            Image(systemName: style.symbol)
+                .font(.system(size: size * 0.34, weight: .medium))
+                .foregroundStyle(.secondary)
+
+            if let remoteURL = style.remoteURL {
+                AsyncImage(url: remoteURL) { phase in
+                    if case let .success(image) = phase {
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    }
+                }
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .accessibilityHidden(true)
     }
 }
 
