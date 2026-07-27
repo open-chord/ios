@@ -9,7 +9,13 @@ struct PlaybackControllerTests {
     func playSelectsTrack() {
         let engine = ManualPlaybackEngine()
         let track = makeTrack()
-        let controller = PlaybackController(engine: engine, nowPlaying: NowPlayingManagerRecorder())
+        let defaults = UserDefaults(suiteName: #function)!
+        defaults.removePersistentDomain(forName: #function)
+        let controller = PlaybackController(
+            engine: engine,
+            nowPlaying: NowPlayingManagerRecorder(),
+            defaults: defaults
+        )
 
         controller.play(track: track, in: [track])
 
@@ -18,6 +24,30 @@ struct PlaybackControllerTests {
         #expect(controller.queue == [track])
         #expect(controller.isPlaying)
         #expect(controller.elapsed == 0)
+        #expect(controller.lastPlayedTrackID == track.id)
+        #expect(defaults.string(forKey: PlaybackController.lastPlayedTrackIDKey) == track.id.uuidString)
+    }
+
+    @Test("Last played track survives controller recreation")
+    func lastPlayedTrackSurvivesRecreation() {
+        let defaults = UserDefaults(suiteName: #function)!
+        defaults.removePersistentDomain(forName: #function)
+        let track = makeTrack()
+        let first = PlaybackController(
+            engine: ManualPlaybackEngine(),
+            nowPlaying: NowPlayingManagerRecorder(),
+            defaults: defaults
+        )
+        first.play(track: track, in: [track])
+
+        let restored = PlaybackController(
+            engine: ManualPlaybackEngine(),
+            nowPlaying: NowPlayingManagerRecorder(),
+            defaults: defaults
+        )
+
+        #expect(restored.currentTrack == nil)
+        #expect(restored.lastPlayedTrackID == track.id)
     }
 
     @Test("Engine state drives the public playback state")

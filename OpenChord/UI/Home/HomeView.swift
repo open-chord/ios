@@ -36,8 +36,8 @@ struct HomeView: View {
     private var content: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 28) {
-                if let currentAlbum {
-                    continueListening(currentAlbum)
+                if let continueTrack, let currentAlbum {
+                    continueListening(currentAlbum, track: continueTrack)
                 }
 
                 albumShelf(
@@ -59,7 +59,7 @@ struct HomeView: View {
         .refreshable { await catalog.reload() }
     }
 
-    private func continueListening(_ album: Album) -> some View {
+    private func continueListening(_ album: Album, track: Track) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Continue Listening")
                 .font(.title2.bold())
@@ -71,7 +71,7 @@ struct HomeView: View {
                         .frame(width: 92, height: 92)
 
                     VStack(alignment: .leading, spacing: 5) {
-                        Text(player.currentTrack?.title ?? album.title)
+                        Text(track.title)
                             .font(.headline)
                             .lineLimit(1)
                         Text(album.artist.name)
@@ -133,11 +133,20 @@ struct HomeView: View {
     }
 
     private var currentAlbum: Album? {
-        guard let track = player.currentTrack else { return nil }
+        guard let trackID = continueTrack?.id else { return nil }
         return catalog.albums.first { album in
-            album.tracks.contains(where: { $0.id == track.id })
-                || (album.title == track.albumTitle && album.artist.name == track.artistName)
+            album.tracks.contains(where: { $0.id == trackID })
         }
+    }
+
+    private var continueTrack: Track? {
+        if let currentTrack = player.currentTrack {
+            return currentTrack
+        }
+        guard let lastPlayedTrackID = player.lastPlayedTrackID else { return nil }
+        return catalog.albums.lazy
+            .flatMap(\.tracks)
+            .first { $0.id == lastPlayedTrackID }
     }
 
     private var recentlyAdded: [Album] {

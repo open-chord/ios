@@ -219,8 +219,8 @@ private struct MiniPlayerContent: View {
         HStack(spacing: isCompact ? 8 : 12) {
             MiniPlayerArtwork(
                 style: track.artwork,
-                size: isCompact ? 30 : 52,
-                cornerRadius: isCompact ? 6 : 10
+                size: isCompact ? 24 : 44,
+                cornerRadius: isCompact ? 5 : 9
             )
 
             VStack(alignment: .leading, spacing: 2) {
@@ -256,7 +256,7 @@ private struct MiniPlayerContent: View {
                 .accessibilityLabel("Next track")
             }
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 12)
         .padding(.vertical, isCompact ? 3 : 6)
         .fallbackMiniPlayerGlass(isEnabled: usesFallbackMaterial)
         .contentShape(Rectangle())

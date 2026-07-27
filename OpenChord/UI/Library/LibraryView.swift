@@ -59,6 +59,12 @@ struct LibraryView: View {
         .background(Color.black)
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: Album.self) { AlbumView(album: $0) }
+        .navigationDestination(for: Artist.self) { artist in
+            ArtistView(
+                artist: artist,
+                albums: catalog.albums.filter { $0.artist.id == artist.id }
+            )
+        }
     }
 
     private var header: some View {
@@ -190,7 +196,7 @@ struct LibraryView: View {
     private var artistList: some View {
         LazyVStack(spacing: 0) {
             ForEach(artists, id: \.artist.id) { item in
-                VStack(spacing: 0) {
+                NavigationLink(value: item.artist) {
                     HStack(spacing: 14) {
                         ArtworkView(
                             style: item.albums[0].artwork,
@@ -209,12 +215,18 @@ struct LibraryView: View {
                         }
 
                         Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.tertiary)
                     }
                     .padding(.vertical, 10)
-
-                    Divider()
-                        .padding(.leading, 78)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+
+                Divider()
+                    .padding(.leading, 78)
             }
         }
     }
@@ -240,6 +252,34 @@ struct LibraryView: View {
             }
             .buttonStyle(.bordered)
         }
+    }
+}
+
+/// Albums grouped under one artist, reached from the Library artist filter.
+private struct ArtistView: View {
+    let artist: Artist
+    let albums: [Album]
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 16),
+        GridItem(.flexible(), spacing: 16),
+    ]
+
+    var body: some View {
+        ScrollView {
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
+                ForEach(albums) { album in
+                    NavigationLink(value: album) {
+                        AlbumCard(album: album, isDownloaded: false)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding()
+        }
+        .background(Color.black)
+        .navigationTitle(artist.name)
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 
