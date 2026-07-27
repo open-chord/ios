@@ -5,6 +5,7 @@ struct RootView: View {
     private enum AppTab: Hashable {
         case library
         case settings
+        case search
     }
 
     @Environment(PlaybackController.self) private var player
@@ -17,15 +18,23 @@ struct RootView: View {
 
         if #available(iOS 26.0, *) {
             if let track = player.currentTrack {
-                tabShell
+                modernTabShell
                     .tabViewBottomAccessory {
                         AdaptiveMiniPlayer(track: track)
                     }
             } else {
-                tabShell
+                modernTabShell
             }
+        } else if #available(iOS 18.0, *) {
+            modernTabShell
+                .safeAreaInset(edge: .bottom, spacing: 8) {
+                    if let track = player.currentTrack {
+                        LegacyMiniPlayer(track: track)
+                            .padding(.horizontal, 10)
+                    }
+                }
         } else {
-            tabShell
+            legacyTabShell
                 .safeAreaInset(edge: .bottom, spacing: 8) {
                     if let track = player.currentTrack {
                         LegacyMiniPlayer(track: track)
@@ -35,7 +44,41 @@ struct RootView: View {
         }
     }
 
-    private var tabShell: some View {
+    @available(iOS 18.0, *)
+    private var modernTabShell: some View {
+        @Bindable var player = player
+
+        return TabView(selection: $selectedTab) {
+            Tab("Library", systemImage: "square.stack.fill", value: AppTab.library) {
+                NavigationStack {
+                    LibraryView {
+                        selectedTab = .settings
+                    }
+                }
+            }
+
+            Tab("Settings", systemImage: "gearshape.fill", value: AppTab.settings) {
+                NavigationStack {
+                    SettingsView()
+                }
+            }
+
+            Tab(value: AppTab.search, role: .search) {
+                NavigationStack {
+                    SearchView()
+                }
+            }
+        }
+        .sheet(isPresented: $player.isPlayerPresented) {
+            PlayerView()
+        }
+        .tint(.white)
+        .task {
+            await catalog.loadIfNeeded()
+        }
+    }
+
+    private var legacyTabShell: some View {
         @Bindable var player = player
 
         return TabView(selection: $selectedTab) {
@@ -52,6 +95,12 @@ struct RootView: View {
             }
             .tabItem { Label("Settings", systemImage: "gearshape.fill") }
             .tag(AppTab.settings)
+
+            NavigationStack {
+                SearchView()
+            }
+            .tabItem { Label("Search", systemImage: "magnifyingglass") }
+            .tag(AppTab.search)
         }
         .sheet(isPresented: $player.isPlayerPresented) {
             PlayerView()
@@ -96,11 +145,15 @@ private struct MiniPlayerContent: View {
 
     var body: some View {
         HStack(spacing: isCompact ? 8 : 12) {
-            ArtworkView(style: track.artwork, cornerRadius: isCompact ? 6 : 10)
-                .frame(
-                    width: isCompact ? 30 : 48,
-                    height: isCompact ? 30 : 48
-                )
+            ArtworkView(
+                style: track.artwork,
+                cornerRadius: isCompact ? 6 : 8,
+                showsShadow: false
+            )
+            .frame(
+                width: isCompact ? 28 : 44,
+                height: isCompact ? 28 : 44
+            )
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.title)

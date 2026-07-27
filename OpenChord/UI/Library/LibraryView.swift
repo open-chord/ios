@@ -21,7 +21,6 @@ struct LibraryView: View {
     @EnvironmentObject private var downloads: TrackDownloadStore
     @State private var filter: Filter = .all
     @State private var sortOrder: SortOrder = .recentlyAdded
-    @State private var searchText = ""
 
     private let columns = [
         GridItem(.flexible(), spacing: 16),
@@ -74,13 +73,16 @@ struct LibraryView: View {
     private var libraryContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                searchField
                 controls
 
                 if visibleAlbums.isEmpty {
-                    ContentUnavailableView.search(text: searchText)
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 80)
+                    ContentUnavailableView(
+                        "No Downloaded Albums",
+                        systemImage: "arrow.down.circle",
+                        description: Text("Download an album to make it available offline.")
+                    )
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 80)
                 } else {
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
                         ForEach(visibleAlbums) { album in
@@ -99,19 +101,6 @@ struct LibraryView: View {
             .padding(.bottom, 16)
         }
         .refreshable { await catalog.reload() }
-    }
-
-    private var searchField: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-            TextField("Albums or artists", text: $searchText)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-        }
-        .padding(.horizontal, 14)
-        .frame(height: 44)
-        .background(.thinMaterial, in: Capsule())
     }
 
     private var controls: some View {
@@ -138,14 +127,8 @@ struct LibraryView: View {
     }
 
     private var visibleAlbums: [Album] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let filtered = catalog.albums.filter { album in
-            let matchesDownload = filter == .all || isDownloaded(album)
-            let matchesSearch =
-                query.isEmpty
-                || album.title.localizedCaseInsensitiveContains(query)
-                || album.artist.name.localizedCaseInsensitiveContains(query)
-            return matchesDownload && matchesSearch
+            filter == .all || isDownloaded(album)
         }
 
         return filtered.sorted { first, second in
@@ -192,7 +175,7 @@ struct LibraryView: View {
 }
 
 /// Compact album grid card with an unobtrusive offline-availability badge.
-private struct AlbumCard: View {
+struct AlbumCard: View {
     let album: Album
     let isDownloaded: Bool
 

@@ -7,6 +7,7 @@ import SwiftUI
 struct ArtworkView: View {
     let style: ArtworkStyle
     var cornerRadius: CGFloat = 24
+    var showsShadow = true
 
     var body: some View {
         GeometryReader { proxy in
@@ -38,7 +39,11 @@ struct ArtworkView: View {
         }
         .aspectRatio(1, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        .shadow(color: style.colors.first?.swiftUIColor.opacity(0.3) ?? .clear, radius: 24, y: 12)
+        .shadow(
+            color: showsShadow ? style.colors.first?.swiftUIColor.opacity(0.3) ?? .clear : .clear,
+            radius: showsShadow ? 24 : 0,
+            y: showsShadow ? 12 : 0
+        )
         .accessibilityHidden(true)
     }
 
