@@ -25,6 +25,19 @@ struct CatalogAPIClientTests {
         #expect(playlist.tracks.first?.id == track.id)
     }
 
+    @Test("Falls back to albums when the server predates playlist support")
+    func fallsBackToLegacyCatalogSchema() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [LegacyCatalogURLProtocol.self]
+        let client = CatalogAPIClient(session: URLSession(configuration: configuration))
+        let serverURL = try #require(URL(string: "http://192.168.1.20:8080"))
+
+        let catalog = try await client.fetchCatalog(from: serverURL)
+
+        #expect(catalog.albums.map(\.title) == ["Afterglow"])
+        #expect(catalog.playlists.isEmpty)
+    }
+
     @Test(
         "Normalizes common local server addresses",
         arguments: [
@@ -190,4 +203,76 @@ private final class CatalogURLProtocol: URLProtocol, @unchecked Sendable {
     }
 
     override func stopLoading() {}
+}
+
+private final class LegacyCatalogURLProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool {
+        request.url?.path == "/graphql"
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        let requestData = request.httpBody ?? request.httpBodyStream.flatMap(Self.read)
+        let query =
+            requestData
+            .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }?["query"]
+            as? String
+        let body =
+            if query?.contains("playlists") == true {
+                """
+                {
+                  "errors": [{
+                    "message": "Validation error (FieldUndefined@[playlists]) : Field 'playlists' in type 'Query' is undefined"
+                  }]
+                }
+                """
+            } else {
+                """
+                {
+                  "data": {
+                    "albums": [{
+                      "id": "20000000-0000-0000-0000-000000000001",
+                      "title": "Afterglow",
+                      "year": 2026,
+                      "artworkUrl": null,
+                      "artist": {
+                        "id": "10000000-0000-0000-0000-000000000001",
+                        "name": "Aurora Lines"
+                      },
+                      "tracks": []
+                    }]
+                  }
+                }
+                """
+            }
+        let response = HTTPURLResponse(
+            url: request.url!,
+            statusCode: 200,
+            httpVersion: "HTTP/1.1",
+            headerFields: ["Content-Type": "application/json"]
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(body.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+
+    private static func read(_ stream: InputStream) -> Data? {
+        stream.open()
+        defer { stream.close() }
+
+        var data = Data()
+        var buffer = [UInt8](repeating: 0, count: 1_024)
+        while stream.hasBytesAvailable {
+            let count = stream.read(&buffer, maxLength: buffer.count)
+            guard count >= 0 else { return nil }
+            guard count > 0 else { break }
+            data.append(buffer, count: count)
+        }
+        return data
+    }
 }

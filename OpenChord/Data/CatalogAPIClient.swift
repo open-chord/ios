@@ -44,46 +44,90 @@ struct CatalogAPIClient: CatalogLoading, PlaylistMutating {
     /// - Throws: ``CatalogAPIError`` for invalid HTTP or GraphQL responses, or
     ///   an error produced by `URLSession` or `JSONDecoder`.
     func fetchCatalog(from serverURL: URL) async throws -> CatalogSnapshot {
-        let payload: CatalogPayload = try await execute(
-            query: """
-                query OpenChordCatalog {
-                  albums {
-                    id
-                    title
-                    year
-                    artworkUrl
-                    artist { id name }
-                    tracks {
-                      id
-                      title
-                      durationMs
-                      artistName
-                      albumTitle
-                      streamUrl
-                      lyrics { id text startMs endMs }
+        do {
+            let payload: CatalogPayload = try await execute(
+                query: """
+                    query OpenChordCatalog {
+                      albums {
+                        id
+                        title
+                        year
+                        artworkUrl
+                        artist { id name }
+                        tracks {
+                          id
+                          title
+                          durationMs
+                          artistName
+                          albumTitle
+                          streamUrl
+                          lyrics { id text startMs endMs }
+                        }
+                      }
+                      playlists {
+                        id
+                        name
+                        createdAt
+                        updatedAt
+                        tracks {
+                          id
+                          title
+                          durationMs
+                          artistName
+                          albumTitle
+                          streamUrl
+                          lyrics { id text startMs endMs }
+                        }
+                      }
                     }
-                  }
-                  playlists {
-                    id
-                    name
-                    createdAt
-                    updatedAt
-                    tracks {
-                      id
-                      title
-                      durationMs
-                      artistName
-                      albumTitle
-                      streamUrl
-                      lyrics { id text startMs endMs }
+                    """,
+                variables: EmptyVariables(),
+                at: serverURL
+            )
+            return makeSnapshot(
+                albums: payload.albums,
+                playlists: payload.playlists,
+                relativeTo: serverURL
+            )
+        } catch CatalogAPIError.graphQL(let message)
+            where Self.isMissingPlaylistsField(message)
+        {
+            // Keep the catalog usable during a rolling deployment where the
+            // client reaches a server that predates playlist support.
+            let payload: LegacyCatalogPayload = try await execute(
+                query: """
+                    query OpenChordCatalog {
+                      albums {
+                        id
+                        title
+                        year
+                        artworkUrl
+                        artist { id name }
+                        tracks {
+                          id
+                          title
+                          durationMs
+                          artistName
+                          albumTitle
+                          streamUrl
+                          lyrics { id text startMs endMs }
+                        }
+                      }
                     }
-                  }
-                }
-                """,
-            variables: EmptyVariables(),
-            at: serverURL
-        )
-        let albums = payload.albums.map { $0.album(relativeTo: serverURL) }
+                    """,
+                variables: EmptyVariables(),
+                at: serverURL
+            )
+            return makeSnapshot(albums: payload.albums, playlists: [], relativeTo: serverURL)
+        }
+    }
+
+    private func makeSnapshot(
+        albums albumDTOs: [AlbumDTO],
+        playlists playlistDTOs: [PlaylistDTO],
+        relativeTo serverURL: URL
+    ) -> CatalogSnapshot {
+        let albums = albumDTOs.map { $0.album(relativeTo: serverURL) }
         var artworkByAlbum: [AlbumArtworkKey: ArtworkStyle] = [:]
         for album in albums {
             artworkByAlbum[
@@ -92,10 +136,14 @@ struct CatalogAPIClient: CatalogLoading, PlaylistMutating {
         }
         return CatalogSnapshot(
             albums: albums,
-            playlists: payload.playlists.map {
+            playlists: playlistDTOs.map {
                 $0.playlist(relativeTo: serverURL, artworkByAlbum: artworkByAlbum)
             }
         )
+    }
+
+    private static func isMissingPlaylistsField(_ message: String) -> Bool {
+        message.contains("Field 'playlists'") && message.contains("undefined")
     }
 
     func createPlaylist(named name: String, at serverURL: URL) async throws -> Playlist {
@@ -279,6 +327,11 @@ private struct GraphQLError: Decodable {
 private struct CatalogPayload: Decodable {
     let albums: [AlbumDTO]
     let playlists: [PlaylistDTO]
+}
+
+/// Catalog shape exposed by servers deployed before playlist support.
+private struct LegacyCatalogPayload: Decodable {
+    let albums: [AlbumDTO]
 }
 
 private struct PlaylistMutationPayload: Decodable {
