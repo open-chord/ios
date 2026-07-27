@@ -11,15 +11,18 @@ struct CatalogAPIClientTests {
         let client = CatalogAPIClient(session: URLSession(configuration: configuration))
         let serverURL = try #require(URL(string: "http://192.168.1.20:8080"))
 
-        let albums = try await client.fetchAlbums(from: serverURL)
-        let album = try #require(albums.first)
+        let catalog = try await client.fetchCatalog(from: serverURL)
+        let album = try #require(catalog.albums.first)
         let track = try #require(album.tracks.first)
+        let playlist = try #require(catalog.playlists.first)
 
         #expect(album.title == "Afterglow")
         #expect(track.lyrics.first?.text == "Streetlights drawing silver lines")
         #expect(track.duration == 96)
         #expect(track.audioSource.url()?.absoluteString == "http://192.168.1.20:8080/media/tracks/track")
         #expect(album.artwork.remoteURL?.absoluteString == "http://192.168.1.20:8080/media/artwork/cover")
+        #expect(playlist.name == "Night Drive")
+        #expect(playlist.tracks.first?.id == track.id)
     }
 
     @Test(
@@ -39,7 +42,9 @@ struct CatalogAPIClientTests {
     @MainActor
     func successfulRequestMarksServerConnected() async {
         let store = CatalogStore(
-            loader: StubCatalogLoader(result: .success([])),
+            loader: StubCatalogLoader(
+                result: .success(CatalogSnapshot(albums: [], playlists: []))
+            ),
             defaults: UserDefaults(suiteName: #function)!
         )
 
@@ -62,13 +67,58 @@ struct CatalogAPIClientTests {
         #expect(store.connectionState == .unavailable)
         #expect(store.errorMessage != nil)
     }
+
+    @Test("Creating a playlist updates the local library snapshot")
+    @MainActor
+    func creatingPlaylistUpdatesSnapshot() async throws {
+        let playlist = Playlist(
+            id: UUID(),
+            name: "Night Drive",
+            createdAt: .now,
+            updatedAt: .now,
+            tracks: []
+        )
+        let store = CatalogStore(
+            loader: StubCatalogLoader(
+                result: .success(CatalogSnapshot(albums: [], playlists: []))
+            ),
+            playlistClient: StubPlaylistClient(created: playlist),
+            defaults: UserDefaults(suiteName: #function)!
+        )
+
+        try await store.createPlaylist(named: playlist.name)
+
+        #expect(store.playlists == [playlist])
+    }
 }
 
 private struct StubCatalogLoader: CatalogLoading {
-    let result: Result<[Album], Error>
+    let result: Result<CatalogSnapshot, Error>
 
-    func fetchAlbums(from serverURL: URL) async throws -> [Album] {
+    func fetchCatalog(from serverURL: URL) async throws -> CatalogSnapshot {
         try result.get()
+    }
+}
+
+private struct StubPlaylistClient: PlaylistMutating {
+    let created: Playlist
+
+    func createPlaylist(named name: String, at serverURL: URL) async throws -> Playlist {
+        created
+    }
+
+    func renamePlaylist(id: UUID, to name: String, at serverURL: URL) async throws -> Playlist {
+        created
+    }
+
+    func deletePlaylist(id: UUID, at serverURL: URL) async throws {}
+
+    func add(trackID: UUID, to playlistID: UUID, at serverURL: URL) async throws -> Playlist {
+        created
+    }
+
+    func remove(trackID: UUID, from playlistID: UUID, at serverURL: URL) async throws -> Playlist {
+        created
     }
 }
 
@@ -98,6 +148,21 @@ private final class CatalogURLProtocol: URLProtocol, @unchecked Sendable {
                   "startMs": 0,
                   "endMs": 8000
                 }]
+              }]
+            }],
+            "playlists": [{
+              "id": "50000000-0000-0000-0000-000000000001",
+              "name": "Night Drive",
+              "createdAt": "2026-07-27T12:00:00Z",
+              "updatedAt": "2026-07-27T12:00:00Z",
+              "tracks": [{
+                "id": "30000000-0000-0000-0000-000000000001",
+                "title": "Night Drive",
+                "durationMs": 96000,
+                "artistName": "Aurora Lines",
+                "albumTitle": "Afterglow",
+                "streamUrl": "http://localhost:8080/media/tracks/track",
+                "lyrics": []
               }]
             }]
           }

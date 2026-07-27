@@ -3,6 +3,7 @@ import SwiftUI
 /// Searchable, filterable entry point for the user's album collection.
 struct LibraryView: View {
     private enum Section: String, CaseIterable, Identifiable {
+        case playlists = "Playlists"
         case albums = "Albums"
         case artists = "Artists"
         case downloaded = "Downloaded"
@@ -22,6 +23,10 @@ struct LibraryView: View {
     @EnvironmentObject private var downloads: TrackDownloadStore
     @State private var section: Section = .albums
     @State private var sortOrder: SortOrder = .recentlyAdded
+    @State private var isCreatingPlaylist = false
+    @State private var playlistName = ""
+    @State private var mutationError: String?
+    @State private var pendingDeletion: Playlist?
 
     private let columns = [
         GridItem(.flexible(), spacing: 16),
@@ -65,6 +70,48 @@ struct LibraryView: View {
                 albums: catalog.albums.filter { $0.artist.id == artist.id }
             )
         }
+        .navigationDestination(for: Playlist.self) { playlist in
+            PlaylistView(playlistID: playlist.id)
+        }
+        .alert("New Playlist", isPresented: $isCreatingPlaylist) {
+            TextField("Playlist name", text: $playlistName)
+            Button("Cancel", role: .cancel) { playlistName = "" }
+            Button("Create") { createPlaylist() }
+                .disabled(playlistName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        } message: {
+            Text("Give the playlist a short, recognizable name.")
+        }
+        .alert(
+            "Playlist Update Failed",
+            isPresented: Binding(
+                get: { mutationError != nil },
+                set: { if !$0 { mutationError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(mutationError ?? "")
+        }
+        .confirmationDialog(
+            "Delete Playlist?",
+            isPresented: Binding(
+                get: { pendingDeletion != nil },
+                set: { if !$0 { pendingDeletion = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let pendingDeletion {
+                Button("Delete \(pendingDeletion.name)", role: .destructive) {
+                    deletePlaylist(pendingDeletion)
+                    self.pendingDeletion = nil
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                pendingDeletion = nil
+            }
+        } message: {
+            Text("The playlist will be removed from the server. Its tracks and albums are not deleted.")
+        }
     }
 
     private var header: some View {
@@ -82,7 +129,9 @@ struct LibraryView: View {
             VStack(alignment: .leading, spacing: 20) {
                 controls
 
-                if section == .artists {
+                if section == .playlists {
+                    playlistList
+                } else if section == .artists {
                     artistList
                 } else if visibleAlbums.isEmpty {
                     ContentUnavailableView(
@@ -138,13 +187,20 @@ struct LibraryView: View {
             .scrollIndicators(.hidden)
 
             HStack {
-                Text(section == .artists ? "\(artists.count) artists" : "\(visibleAlbums.count) albums")
+                Text(sectionSummary)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
                 Spacer()
 
-                if section != .artists {
+                if section == .playlists {
+                    Button {
+                        isCreatingPlaylist = true
+                    } label: {
+                        Label("New Playlist", systemImage: "plus")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                } else if section != .artists {
                     Menu {
                         Picker("Sort albums", selection: $sortOrder) {
                             ForEach(SortOrder.allCases) { order in
@@ -157,6 +213,90 @@ struct LibraryView: View {
                     }
                     .accessibilityLabel("Sort albums")
                 }
+            }
+        }
+    }
+
+    private var sectionSummary: String {
+        switch section {
+        case .playlists:
+            "\(catalog.playlists.count) playlists"
+        case .artists:
+            "\(artists.count) artists"
+        case .albums, .downloaded:
+            "\(visibleAlbums.count) albums"
+        }
+    }
+
+    private var playlistList: some View {
+        LazyVStack(spacing: 0) {
+            if catalog.playlists.isEmpty {
+                ContentUnavailableView(
+                    "No Playlists",
+                    systemImage: "music.note.list",
+                    description: Text("Create a playlist, then add tracks from any album.")
+                )
+                .padding(.top, 70)
+            } else {
+                ForEach(catalog.playlists) { playlist in
+                    NavigationLink(value: playlist) {
+                        HStack(spacing: 14) {
+                            ArtworkView(
+                                style: playlist.artwork,
+                                cornerRadius: 12,
+                                showsShadow: false
+                            )
+                            .frame(width: 64, height: 64)
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(playlist.name)
+                                    .font(.headline)
+                                    .lineLimit(1)
+                                Text(playlist.durationText)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(.vertical, 10)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .swipeActions {
+                        Button("Delete", systemImage: "trash", role: .destructive) {
+                            pendingDeletion = playlist
+                        }
+                    }
+
+                    Divider()
+                        .padding(.leading, 78)
+                }
+            }
+        }
+    }
+
+    private func createPlaylist() {
+        let name = playlistName.trimmingCharacters(in: .whitespacesAndNewlines)
+        playlistName = ""
+        Task {
+            do {
+                try await catalog.createPlaylist(named: name)
+            } catch {
+                mutationError = error.localizedDescription
+            }
+        }
+    }
+
+    private func deletePlaylist(_ playlist: Playlist) {
+        Task {
+            do {
+                try await catalog.deletePlaylist(playlist)
+            } catch {
+                mutationError = error.localizedDescription
             }
         }
     }
