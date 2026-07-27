@@ -19,11 +19,13 @@ struct RootView: View {
         if #available(iOS 26.0, *) {
             if let track = player.currentTrack {
                 modernTabShell
+                    .tabBarMinimizeBehavior(.onScrollDown)
                     .tabViewBottomAccessory {
                         AdaptiveMiniPlayer(track: track)
                     }
             } else {
                 modernTabShell
+                    .tabBarMinimizeBehavior(.onScrollDown)
             }
         } else if #available(iOS 18.0, *) {
             modernTabShell
@@ -147,12 +149,12 @@ private struct MiniPlayerContent: View {
         HStack(spacing: isCompact ? 8 : 12) {
             ArtworkView(
                 style: track.artwork,
-                cornerRadius: isCompact ? 6 : 8,
+                cornerRadius: isCompact ? 6 : 10,
                 showsShadow: false
             )
             .frame(
-                width: isCompact ? 28 : 44,
-                height: isCompact ? 28 : 44
+                width: isCompact ? 30 : 52,
+                height: isCompact ? 30 : 52
             )
 
             VStack(alignment: .leading, spacing: 2) {
@@ -176,19 +178,21 @@ private struct MiniPlayerContent: View {
                     .font(.title3)
                     .frame(width: 40, height: 40)
             }
+
+            if !isCompact {
+                Button {
+                    player.playNext()
+                } label: {
+                    Image(systemName: "forward.fill")
+                        .font(.title3)
+                        .frame(width: 40, height: 40)
+                }
+                .accessibilityLabel("Next track")
+            }
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, isCompact ? 4 : 8)
+        .padding(.vertical, isCompact ? 3 : 6)
         .fallbackMiniPlayerGlass(isEnabled: usesFallbackMaterial)
-        .overlay(alignment: .bottomLeading) {
-            GeometryReader { proxy in
-                Capsule()
-                    .fill(.white.opacity(0.8))
-                    .frame(width: proxy.size.width * player.progress, height: 2)
-            }
-            .frame(height: 2)
-            .padding(.horizontal, 12)
-        }
         .contentShape(Rectangle())
         .onTapGesture { player.isPlayerPresented = true }
         .accessibilityElement(children: .combine)
