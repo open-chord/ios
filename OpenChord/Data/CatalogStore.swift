@@ -88,8 +88,8 @@ final class CatalogStore: ObservableObject {
     }
 
     /// Creates a server-backed playlist and inserts it at the top of the library.
-    func createPlaylist(named name: String) async throws {
-        let playlist = try await playlistClient.createPlaylist(named: name, at: serverURL)
+    func createPlaylist(_ creation: PlaylistCreation) async throws {
+        let playlist = try await playlistClient.createPlaylist(creation, at: serverURL)
         playlists.removeAll { $0.id == playlist.id }
         playlists.insert(playlist, at: 0)
     }
@@ -140,6 +140,7 @@ final class CatalogStore: ObservableObject {
         let decorated = Playlist(
             id: playlist.id,
             name: playlist.name,
+            description: playlist.description,
             createdAt: playlist.createdAt,
             updatedAt: playlist.updatedAt,
             tracks: playlist.tracks.map { track in
@@ -149,7 +150,8 @@ final class CatalogStore: ObservableObject {
                 )
                 guard let artwork = artworkByAlbum[key] else { return track }
                 return track.using(artwork: artwork)
-            }
+            },
+            artwork: playlist.artwork
         )
         guard let index = playlists.firstIndex(where: { $0.id == decorated.id }) else {
             playlists.insert(decorated, at: 0)

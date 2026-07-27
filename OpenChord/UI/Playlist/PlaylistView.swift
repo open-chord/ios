@@ -84,6 +84,13 @@ struct PlaylistView: View {
                     Text(playlist.name)
                         .font(.largeTitle.bold())
                         .multilineTextAlignment(.center)
+                    if !playlist.description.isEmpty {
+                        Text(playlist.description)
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 2)
+                    }
                     Text(playlist.durationText)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)

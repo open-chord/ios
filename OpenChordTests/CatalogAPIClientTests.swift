@@ -99,7 +99,9 @@ struct CatalogAPIClientTests {
             defaults: UserDefaults(suiteName: #function)!
         )
 
-        try await store.createPlaylist(named: playlist.name)
+        try await store.createPlaylist(
+            PlaylistCreation(name: playlist.name, description: "", artworkData: nil)
+        )
 
         #expect(store.playlists == [playlist])
     }
@@ -116,7 +118,7 @@ private struct StubCatalogLoader: CatalogLoading {
 private struct StubPlaylistClient: PlaylistMutating {
     let created: Playlist
 
-    func createPlaylist(named name: String, at serverURL: URL) async throws -> Playlist {
+    func createPlaylist(_ creation: PlaylistCreation, at serverURL: URL) async throws -> Playlist {
         created
     }
 
@@ -166,6 +168,8 @@ private final class CatalogURLProtocol: URLProtocol, @unchecked Sendable {
             "playlists": [{
               "id": "50000000-0000-0000-0000-000000000001",
               "name": "Night Drive",
+              "description": "",
+              "artworkUrl": null,
               "createdAt": "2026-07-27T12:00:00Z",
               "updatedAt": "2026-07-27T12:00:00Z",
               "tracks": [{

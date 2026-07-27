@@ -18,7 +18,7 @@ struct CatalogSnapshot {
 
 /// Playlist mutations supported by the server.
 protocol PlaylistMutating: Sendable {
-    func createPlaylist(named name: String, at serverURL: URL) async throws -> Playlist
+    func createPlaylist(_ creation: PlaylistCreation, at serverURL: URL) async throws -> Playlist
     func renamePlaylist(id: UUID, to name: String, at serverURL: URL) async throws -> Playlist
     func deletePlaylist(id: UUID, at serverURL: URL) async throws
     func add(trackID: UUID, to playlistID: UUID, at serverURL: URL) async throws -> Playlist
@@ -67,6 +67,8 @@ struct CatalogAPIClient: CatalogLoading, PlaylistMutating {
                       playlists {
                         id
                         name
+                        description
+                        artworkUrl
                         createdAt
                         updatedAt
                         tracks {
@@ -146,17 +148,26 @@ struct CatalogAPIClient: CatalogLoading, PlaylistMutating {
         message.contains("Field 'playlists'") && message.contains("undefined")
     }
 
-    func createPlaylist(named name: String, at serverURL: URL) async throws -> Playlist {
-        let payload: PlaylistMutationPayload = try await execute(
-            query: """
-                mutation CreatePlaylist($name: String!) {
-                  playlist: createPlaylist(name: $name) { \(Self.playlistFields) }
-                }
-                """,
-            variables: NameVariables(name: name),
-            at: serverURL
+    func createPlaylist(_ creation: PlaylistCreation, at serverURL: URL) async throws -> Playlist {
+        let boundary = "OpenChord-\(UUID().uuidString)"
+        var request = URLRequest(url: serverURL.appending(path: "api/playlists"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 20
+        request.setValue(
+            "multipart/form-data; boundary=\(boundary)",
+            forHTTPHeaderField: "Content-Type"
         )
-        return payload.playlist.playlist(relativeTo: serverURL, artworkByAlbum: [:])
+        request.httpBody = Self.multipartBody(for: creation, boundary: boundary)
+        let (data, response) = try await session.data(for: request)
+        guard let response = response as? HTTPURLResponse else {
+            throw CatalogAPIError.invalidResponse
+        }
+        guard (200..<300).contains(response.statusCode) else {
+            throw CatalogAPIError.httpStatus(response.statusCode)
+        }
+        let decoder = Self.decoder()
+        let payload = try decoder.decode(PlaylistDTO.self, from: data)
+        return payload.playlist(relativeTo: serverURL, artworkByAlbum: [:])
     }
 
     func renamePlaylist(id: UUID, to name: String, at serverURL: URL) async throws -> Playlist {
@@ -242,6 +253,18 @@ struct CatalogAPIClient: CatalogLoading, PlaylistMutating {
             throw CatalogAPIError.httpStatus(httpResponse.statusCode)
         }
 
+        let decoder = Self.decoder()
+        let envelope = try decoder.decode(GraphQLEnvelope<Payload>.self, from: data)
+        if let message = envelope.errors?.first?.message {
+            throw CatalogAPIError.graphQL(message)
+        }
+        guard let payload = envelope.data else {
+            throw CatalogAPIError.invalidResponse
+        }
+        return payload
+    }
+
+    private static func decoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
             let value = try decoder.singleValueContainer().decode(String.self)
@@ -257,18 +280,38 @@ struct CatalogAPIClient: CatalogLoading, PlaylistMutating {
                 debugDescription: "Invalid ISO-8601 timestamp: \(value)"
             )
         }
-        let envelope = try decoder.decode(GraphQLEnvelope<Payload>.self, from: data)
-        if let message = envelope.errors?.first?.message {
-            throw CatalogAPIError.graphQL(message)
+        return decoder
+    }
+
+    private static func multipartBody(
+        for creation: PlaylistCreation,
+        boundary: String
+    ) -> Data {
+        var body = Data()
+        func append(_ value: String) {
+            body.append(Data(value.utf8))
         }
-        guard let payload = envelope.data else {
-            throw CatalogAPIError.invalidResponse
+        for (name, value) in [
+            ("name", creation.name),
+            ("description", creation.description),
+        ] {
+            append("--\(boundary)\r\n")
+            append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n")
+            append("\(value)\r\n")
         }
-        return payload
+        if let artwork = creation.artworkData {
+            append("--\(boundary)\r\n")
+            append("Content-Disposition: form-data; name=\"artwork\"; filename=\"artwork.jpg\"\r\n")
+            append("Content-Type: image/jpeg\r\n\r\n")
+            body.append(artwork)
+            append("\r\n")
+        }
+        append("--\(boundary)--\r\n")
+        return body
     }
 
     private static let playlistFields = """
-        id name createdAt updatedAt
+        id name description artworkUrl createdAt updatedAt
         tracks {
           id title durationMs artistName albumTitle streamUrl
           lyrics { id text startMs endMs }
@@ -301,7 +344,6 @@ private struct GraphQLRequest<Variables: Encodable>: Encodable {
 }
 
 private struct EmptyVariables: Encodable {}
-private struct NameVariables: Encodable { let name: String }
 private struct IDVariables: Encodable { let id: UUID }
 private struct RenameVariables: Encodable {
     let id: UUID
@@ -404,6 +446,8 @@ private struct TrackDTO: Decodable {
 private struct PlaylistDTO: Decodable {
     let id: UUID
     let name: String
+    let description: String
+    let artworkUrl: String?
     let createdAt: Date
     let updatedAt: Date
     let tracks: [TrackDTO]
@@ -415,6 +459,7 @@ private struct PlaylistDTO: Decodable {
         Playlist(
             id: id,
             name: name,
+            description: description,
             createdAt: createdAt,
             updatedAt: updatedAt,
             tracks: tracks.map {
@@ -425,7 +470,18 @@ private struct PlaylistDTO: Decodable {
                     ]
                         ?? ArtworkStyle(symbol: "music.note", colors: [.indigo, .violet])
                 )
-            }
+            },
+            artwork:
+                artworkUrl
+                .flatMap(URL.init(string:))
+                .map { serverURL.replacingPath(with: $0) }
+                .map {
+                    ArtworkStyle(
+                        symbol: "music.note.list",
+                        colors: [.indigo, .violet],
+                        remoteURL: $0
+                    )
+                }
         )
     }
 }

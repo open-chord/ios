@@ -27,12 +27,33 @@ struct Album: Identifiable, Hashable {
 struct Playlist: Identifiable, Hashable {
     let id: UUID
     let name: String
+    let description: String
     let createdAt: Date
     let updatedAt: Date
     let tracks: [Track]
+    private let customArtwork: ArtworkStyle?
+
+    init(
+        id: UUID,
+        name: String,
+        description: String = "",
+        createdAt: Date,
+        updatedAt: Date,
+        tracks: [Track],
+        artwork: ArtworkStyle? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.tracks = tracks
+        self.customArtwork = artwork
+    }
 
     var artwork: ArtworkStyle {
-        tracks.first?.artwork
+        customArtwork
+            ?? tracks.first?.artwork
             ?? ArtworkStyle(symbol: "music.note.list", colors: [.indigo, .violet])
     }
 
@@ -40,6 +61,13 @@ struct Playlist: Identifiable, Hashable {
         let minutes = Int(tracks.reduce(0) { $0 + $1.duration }) / 60
         return "\(tracks.count) tracks · \(minutes) min"
     }
+}
+
+/// User-entered values and optional JPEG artwork for a new playlist.
+struct PlaylistCreation: Sendable {
+    let name: String
+    let description: String
+    let artworkData: Data?
 }
 
 /// A playable catalog item with optional synchronized lyrics.

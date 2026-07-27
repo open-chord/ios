@@ -24,7 +24,6 @@ struct LibraryView: View {
     @State private var section: Section = .albums
     @State private var sortOrder: SortOrder = .recentlyAdded
     @State private var isCreatingPlaylist = false
-    @State private var playlistName = ""
     @State private var mutationError: String?
     @State private var pendingDeletion: Playlist?
 
@@ -73,13 +72,8 @@ struct LibraryView: View {
         .navigationDestination(for: Playlist.self) { playlist in
             PlaylistView(playlistID: playlist.id)
         }
-        .alert("New Playlist", isPresented: $isCreatingPlaylist) {
-            TextField("Playlist name", text: $playlistName)
-            Button("Cancel", role: .cancel) { playlistName = "" }
-            Button("Create") { createPlaylist() }
-                .disabled(playlistName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        } message: {
-            Text("Give the playlist a short, recognizable name.")
+        .navigationDestination(isPresented: $isCreatingPlaylist) {
+            CreatePlaylistView()
         }
         .alert(
             "Playlist Update Failed",
@@ -275,18 +269,6 @@ struct LibraryView: View {
                     Divider()
                         .padding(.leading, 78)
                 }
-            }
-        }
-    }
-
-    private func createPlaylist() {
-        let name = playlistName.trimmingCharacters(in: .whitespacesAndNewlines)
-        playlistName = ""
-        Task {
-            do {
-                try await catalog.createPlaylist(named: name)
-            } catch {
-                mutationError = error.localizedDescription
             }
         }
     }
