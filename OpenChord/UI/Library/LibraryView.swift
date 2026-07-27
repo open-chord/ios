@@ -2,8 +2,9 @@ import SwiftUI
 
 /// Searchable, filterable entry point for the user's album collection.
 struct LibraryView: View {
-    private enum Filter: String, CaseIterable, Identifiable {
-        case all = "All"
+    private enum Section: String, CaseIterable, Identifiable {
+        case albums = "Albums"
+        case artists = "Artists"
         case downloaded = "Downloaded"
 
         var id: Self { self }
@@ -19,7 +20,7 @@ struct LibraryView: View {
 
     @EnvironmentObject private var catalog: CatalogStore
     @EnvironmentObject private var downloads: TrackDownloadStore
-    @State private var filter: Filter = .all
+    @State private var section: Section = .albums
     @State private var sortOrder: SortOrder = .recentlyAdded
 
     private let columns = [
@@ -75,7 +76,9 @@ struct LibraryView: View {
             VStack(alignment: .leading, spacing: 20) {
                 controls
 
-                if visibleAlbums.isEmpty {
+                if section == .artists {
+                    artistList
+                } else if visibleAlbums.isEmpty {
                     ContentUnavailableView(
                         "No Downloaded Albums",
                         systemImage: "arrow.down.circle",
@@ -104,31 +107,57 @@ struct LibraryView: View {
     }
 
     private var controls: some View {
-        HStack {
-            Picker("Library filter", selection: $filter) {
-                ForEach(Filter.allCases) { filter in
-                    Text(filter.rawValue).tag(filter)
-                }
-            }
-            .pickerStyle(.segmented)
-
-            Menu {
-                Picker("Sort albums", selection: $sortOrder) {
-                    ForEach(SortOrder.allCases) { order in
-                        Text(order.rawValue).tag(order)
+        VStack(alignment: .leading, spacing: 14) {
+            ScrollView(.horizontal) {
+                HStack(spacing: 8) {
+                    ForEach(Section.allCases) { item in
+                        Button {
+                            section = item
+                        } label: {
+                            Text(item.rawValue)
+                                .font(.subheadline.weight(.semibold))
+                                .padding(.horizontal, 16)
+                                .frame(height: 36)
+                                .background(
+                                    section == item ? Color.white : Color.white.opacity(0.12),
+                                    in: Capsule()
+                                )
+                                .foregroundStyle(section == item ? .black : .white)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
-            } label: {
-                Image(systemName: "arrow.up.arrow.down")
-                    .frame(width: 34, height: 34)
+                .padding(.horizontal, 1)
             }
-            .accessibilityLabel("Sort albums")
+            .scrollIndicators(.hidden)
+
+            HStack {
+                Text(section == .artists ? "\(artists.count) artists" : "\(visibleAlbums.count) albums")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                if section != .artists {
+                    Menu {
+                        Picker("Sort albums", selection: $sortOrder) {
+                            ForEach(SortOrder.allCases) { order in
+                                Text(order.rawValue).tag(order)
+                            }
+                        }
+                    } label: {
+                        Label("Sort", systemImage: "arrow.up.arrow.down")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .accessibilityLabel("Sort albums")
+                }
+            }
         }
     }
 
     private var visibleAlbums: [Album] {
         let filtered = catalog.albums.filter { album in
-            filter == .all || isDownloaded(album)
+            section != .downloaded || isDownloaded(album)
         }
 
         return filtered.sorted { first, second in
@@ -146,6 +175,46 @@ struct LibraryView: View {
                     return artistOrder == .orderedAscending
                 }
                 return first.title.localizedStandardCompare(second.title) == .orderedAscending
+            }
+        }
+    }
+
+    private var artists: [(artist: Artist, albums: [Album])] {
+        let groups = Dictionary(grouping: catalog.albums, by: \.artist)
+        return groups.map { (artist: $0.key, albums: $0.value) }
+            .sorted {
+                $0.artist.name.localizedStandardCompare($1.artist.name) == .orderedAscending
+            }
+    }
+
+    private var artistList: some View {
+        LazyVStack(spacing: 0) {
+            ForEach(artists, id: \.artist.id) { item in
+                VStack(spacing: 0) {
+                    HStack(spacing: 14) {
+                        ArtworkView(
+                            style: item.albums[0].artwork,
+                            cornerRadius: 12,
+                            showsShadow: false
+                        )
+                        .frame(width: 64, height: 64)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(item.artist.name)
+                                .font(.headline)
+                                .lineLimit(1)
+                            Text("\(item.albums.count) \(item.albums.count == 1 ? "album" : "albums")")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+                    }
+                    .padding(.vertical, 10)
+
+                    Divider()
+                        .padding(.leading, 78)
+                }
             }
         }
     }

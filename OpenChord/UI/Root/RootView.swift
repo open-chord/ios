@@ -3,6 +3,7 @@ import SwiftUI
 /// Root navigation shell coordinating the library, global sheets, and persistent mini-player.
 struct RootView: View {
     private enum AppTab: Hashable {
+        case home
         case library
         case settings
         case search
@@ -10,7 +11,7 @@ struct RootView: View {
 
     @Environment(PlaybackController.self) private var player
     @EnvironmentObject private var catalog: CatalogStore
-    @State private var selectedTab: AppTab = .library
+    @State private var selectedTab: AppTab = .home
 
     @ViewBuilder
     var body: some View {
@@ -56,6 +57,14 @@ struct RootView: View {
         @Bindable var player = player
 
         return TabView(selection: $selectedTab) {
+            Tab("Home", systemImage: "house.fill", value: AppTab.home) {
+                NavigationStack {
+                    HomeView {
+                        selectedTab = .library
+                    }
+                }
+            }
+
             Tab("Library", systemImage: "square.stack.fill", value: AppTab.library) {
                 NavigationStack {
                     LibraryView {
@@ -89,6 +98,14 @@ struct RootView: View {
         @Bindable var player = player
 
         return TabView(selection: $selectedTab) {
+            NavigationStack {
+                HomeView {
+                    selectedTab = .library
+                }
+            }
+            .tabItem { Label("Home", systemImage: "house.fill") }
+            .tag(AppTab.home)
+
             NavigationStack {
                 LibraryView {
                     selectedTab = .settings
