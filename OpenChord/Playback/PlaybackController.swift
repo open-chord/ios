@@ -170,7 +170,10 @@ final class SystemNowPlayingManager: NowPlayingManaging {
 /// independently so playback ticks do not invalidate unrelated catalog views.
 @Observable
 final class PlaybackController {
+    static let lastPlayedTrackIDKey = "openchord.lastPlayedTrackID"
+
     private(set) var currentTrack: Track?
+    private(set) var lastPlayedTrackID: UUID?
     private(set) var queue: [Track] = []
     private(set) var isPlaying = false
     private(set) var elapsed: TimeInterval = 0
@@ -181,14 +184,20 @@ final class PlaybackController {
     @ObservationIgnored
     private let nowPlaying: any NowPlayingManaging
     @ObservationIgnored
+    private let defaults: UserDefaults
+    @ObservationIgnored
     private var subscriptions = Set<AnyCancellable>()
 
     init(
         engine: any PlaybackEngine = AVPlayerPlaybackEngine(),
-        nowPlaying: any NowPlayingManaging = SystemNowPlayingManager()
+        nowPlaying: any NowPlayingManaging = SystemNowPlayingManager(),
+        defaults: UserDefaults = .standard
     ) {
         self.engine = engine
         self.nowPlaying = nowPlaying
+        self.defaults = defaults
+        lastPlayedTrackID = defaults.string(forKey: Self.lastPlayedTrackIDKey)
+            .flatMap(UUID.init(uuidString:))
 
         engine.state
             .sink { [weak self] state in
@@ -234,6 +243,7 @@ final class PlaybackController {
         if currentTrack?.id != track.id {
             currentTrack = track
             queue = tracks
+            remember(track)
             publishNowPlaying()
             engine.load(track, autoplay: true)
         } else {
@@ -285,6 +295,7 @@ final class PlaybackController {
         let newIndex = (currentIndex + offset + queue.count) % queue.count
         let nextTrack = queue[newIndex]
         self.currentTrack = nextTrack
+        remember(nextTrack)
         publishNowPlaying()
         engine.load(nextTrack, autoplay: true)
     }
@@ -307,6 +318,11 @@ final class PlaybackController {
             let queueIndex = queue.firstIndex(where: { $0.id == currentTrack.id })
         else { return }
         nowPlaying.publish(track: currentTrack, queueIndex: queueIndex, queueCount: queue.count)
+    }
+
+    private func remember(_ track: Track) {
+        lastPlayedTrackID = track.id
+        defaults.set(track.id.uuidString, forKey: Self.lastPlayedTrackIDKey)
     }
 
     private func apply(_ state: PlaybackEngineState) {

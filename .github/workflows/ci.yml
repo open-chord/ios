@@ -20,6 +20,7 @@ env:
   PROJECT: OpenChord.xcodeproj
   SCHEME: OpenChord
   DESTINATION: platform=iOS Simulator,name=iPhone 17,OS=latest
+  HOMEBREW_NO_AUTO_UPDATE: 1
 
 jobs:
   formatting:
@@ -39,10 +40,14 @@ jobs:
 
   static-analysis:
     name: Static analysis
+    needs: formatting
     runs-on: macos-26
     steps:
       - name: Check out the repository
         uses: actions/checkout@v6
+
+      - name: Install compact Xcode log formatter
+        run: command -v xcbeautify >/dev/null || brew install xcbeautify
 
       - name: Analyze
         run: |
@@ -53,14 +58,28 @@ jobs:
             -configuration Debug \
             -destination "generic/platform=iOS Simulator" \
             -derivedDataPath "$RUNNER_TEMP/OpenChordAnalyze" \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee "$RUNNER_TEMP/OpenChordAnalyze.log" \
+            | xcbeautify --renderer github-actions
+
+      - name: Upload analysis diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenChord-analysis-log
+          path: ${{ runner.temp }}/OpenChordAnalyze.log
+          if-no-files-found: ignore
 
   build:
     name: Build
+    needs: static-analysis
     runs-on: macos-26
     steps:
       - name: Check out the repository
         uses: actions/checkout@v6
+
+      - name: Install compact Xcode log formatter
+        run: command -v xcbeautify >/dev/null || brew install xcbeautify
 
       - name: Build the application
         run: |
@@ -71,14 +90,28 @@ jobs:
             -configuration Debug \
             -destination "generic/platform=iOS Simulator" \
             -derivedDataPath "$RUNNER_TEMP/OpenChordBuild" \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee "$RUNNER_TEMP/OpenChordBuild.log" \
+            | xcbeautify --renderer github-actions
+
+      - name: Upload build diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenChord-build-log
+          path: ${{ runner.temp }}/OpenChordBuild.log
+          if-no-files-found: ignore
 
   unit-tests:
     name: Unit tests
+    needs: build
     runs-on: macos-26
     steps:
       - name: Check out the repository
         uses: actions/checkout@v6
+
+      - name: Install compact Xcode log formatter
+        run: command -v xcbeautify >/dev/null || brew install xcbeautify
 
       - name: Run unit tests
         run: |
@@ -91,22 +124,30 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/OpenChordUnitTests" \
             -resultBundlePath "$RUNNER_TEMP/OpenChordUnitTests.xcresult" \
             -only-testing:OpenChordTests \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee "$RUNNER_TEMP/OpenChordUnitTests.log" \
+            | xcbeautify --renderer github-actions
 
       - name: Upload unit-test diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: OpenChord-unit-tests-xcresult
-          path: ${{ runner.temp }}/OpenChordUnitTests.xcresult
+          path: |
+            ${{ runner.temp }}/OpenChordUnitTests.xcresult
+            ${{ runner.temp }}/OpenChordUnitTests.log
           if-no-files-found: ignore
 
   ui-tests:
     name: UI tests
+    needs: unit-tests
     runs-on: macos-26
     steps:
       - name: Check out the repository
         uses: actions/checkout@v6
+
+      - name: Install compact Xcode log formatter
+        run: command -v xcbeautify >/dev/null || brew install xcbeautify
 
       - name: Run UI tests
         run: |
@@ -120,12 +161,16 @@ jobs:
             -resultBundlePath "$RUNNER_TEMP/OpenChordUITests.xcresult" \
             -only-testing:OpenChordUITests \
             -parallel-testing-enabled NO \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee "$RUNNER_TEMP/OpenChordUITests.log" \
+            | xcbeautify --renderer github-actions
 
       - name: Upload UI-test diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: OpenChord-ui-tests-xcresult
-          path: ${{ runner.temp }}/OpenChordUITests.xcresult
+          path: |
+            ${{ runner.temp }}/OpenChordUITests.xcresult
+            ${{ runner.temp }}/OpenChordUITests.log
           if-no-files-found: ignore

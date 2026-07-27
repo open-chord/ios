@@ -7,6 +7,14 @@ import Foundation
 /// The store serializes reloads and preserves the last successful catalog when
 /// a later request fails, allowing the UI to remain useful while offline.
 final class CatalogStore: ObservableObject {
+    /// Reachability derived from the most recent catalog request.
+    enum ConnectionState: Equatable {
+        case unknown
+        case connecting
+        case connected
+        case unavailable
+    }
+
     static let serverURLKey = "openchord.serverURL"
     static let defaultServerAddress = "http://localhost:8080"
 
@@ -14,6 +22,7 @@ final class CatalogStore: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
     @Published private(set) var serverURL: URL
+    @Published private(set) var connectionState: ConnectionState = .unknown
 
     private let loader: any CatalogLoading
     private let defaults: UserDefaults
@@ -41,14 +50,17 @@ final class CatalogStore: ObservableObject {
     func reload() async {
         guard !isLoading else { return }
         isLoading = true
+        connectionState = .connecting
         errorMessage = nil
         defer { isLoading = false }
 
         do {
             albums = try await loader.fetchAlbums(from: serverURL)
             hasLoaded = true
+            connectionState = .connected
         } catch {
             errorMessage = Self.userFacingMessage(for: error)
+            connectionState = .unavailable
         }
     }
 

@@ -1,22 +1,33 @@
 import SwiftUI
 
-/// Modal editor for validating, persisting, and connecting to a server origin.
+/// Server configuration and explicit reachability status.
 struct ServerSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var catalog: CatalogStore
     @State private var address = ""
     @State private var validationMessage: String?
-    @State private var isSaving = false
 
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    connectionStatus
+                }
+
                 Section {
                     TextField("http://192.168.1.20:8080", text: $address)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
                         .accessibilityIdentifier("serverAddress")
+
+                    Button {
+                        Task { await connect() }
+                    } label: {
+                        Label(connectButtonTitle, systemImage: "network")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .disabled(catalog.connectionState == .connecting)
                 } header: {
                     Text("Server address")
                 } footer: {
@@ -31,7 +42,6 @@ struct ServerSettingsView: View {
                 }
 
                 Section("Local network") {
-                    LabeledContent("Current server", value: catalog.serverURL.absoluteString)
                     Text("Your iPhone and server must be connected to the same Wi-Fi or wired local network.")
                         .foregroundStyle(.secondary)
                 }
@@ -39,40 +49,69 @@ struct ServerSettingsView: View {
             .navigationTitle("OpenChord Server")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Connect") {
-                        Task { await connect() }
-                    }
-                    .disabled(isSaving)
-                }
-            }
-            .overlay {
-                if isSaving {
-                    ProgressView("Connecting…")
-                        .padding()
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                    Button("Done") { dismiss() }
                 }
             }
             .onAppear { address = catalog.serverURL.absoluteString }
         }
     }
 
+    private var connectionStatus: some View {
+        HStack(spacing: 14) {
+            statusIcon
+                .font(.title2)
+                .frame(width: 34, height: 34)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(statusTitle)
+                    .font(.headline)
+                Text(catalog.serverURL.absoluteString)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var statusIcon: some View {
+        switch catalog.connectionState {
+        case .unknown:
+            Image(systemName: "questionmark.circle")
+                .foregroundStyle(.secondary)
+        case .connecting:
+            ProgressView()
+        case .connected:
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+        case .unavailable:
+            Image(systemName: "xmark.circle.fill")
+                .foregroundStyle(.red)
+        }
+    }
+
+    private var statusTitle: String {
+        switch catalog.connectionState {
+        case .unknown: "Not checked"
+        case .connecting: "Checking connection…"
+        case .connected: "Server connected"
+        case .unavailable: "Server unavailable"
+        }
+    }
+
+    private var connectButtonTitle: String {
+        catalog.connectionState == .connecting ? "Connecting…" : "Test and Connect"
+    }
+
     private func connect() async {
-        isSaving = true
         validationMessage = nil
         do {
             try await catalog.updateServerAddress(address)
-            if let error = catalog.errorMessage {
-                validationMessage = error
-            } else {
-                dismiss()
-            }
+            validationMessage = catalog.errorMessage
         } catch {
             validationMessage = error.localizedDescription
         }
-        isSaving = false
     }
 }
