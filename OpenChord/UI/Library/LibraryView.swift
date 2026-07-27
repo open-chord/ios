@@ -243,8 +243,7 @@ struct LibraryView: View {
                         HStack(spacing: 14) {
                             ArtworkView(
                                 style: playlist.artwork,
-                                cornerRadius: 12,
-                                showsShadow: false
+                                cornerRadius: 12
                             )
                             .frame(width: 64, height: 64)
 
@@ -328,8 +327,7 @@ struct LibraryView: View {
                     HStack(spacing: 14) {
                         ArtworkView(
                             style: item.albums[0].artwork,
-                            cornerRadius: 12,
-                            showsShadow: false
+                            cornerRadius: 12
                         )
                         .frame(width: 64, height: 64)
 
