@@ -8,43 +8,48 @@ struct AlbumView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
-                ArtworkView(style: album.artwork)
-                    .frame(maxWidth: 310)
-                    .padding(.top, 12)
+            VStack(spacing: 18) {
+                ArtworkView(style: album.artwork, cornerRadius: 22)
+                    .frame(width: 218, height: 218)
+                    .padding(.top, 8)
 
-                VStack(spacing: 6) {
-                    Text(album.title).font(.largeTitle.bold())
-                    Text(album.artist.name).font(.title3).foregroundStyle(.secondary)
+                VStack(spacing: 4) {
+                    Text(album.title)
+                        .font(.title2.bold())
+                        .multilineTextAlignment(.center)
+                    Text(album.artist.name)
+                        .font(.body)
+                        .foregroundStyle(.secondary)
                     Text("\(album.year) · \(album.durationText)")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
 
-                Button {
-                    guard let first = album.tracks.first else { return }
-                    player.play(
-                        track: downloads.playable(first),
-                        in: downloads.playable(album.tracks)
-                    )
-                } label: {
-                    Label("Play", systemImage: "play.fill")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.white)
-                .foregroundStyle(.black)
+                HStack(spacing: 12) {
+                    Button {
+                        playAlbum()
+                    } label: {
+                        Label("Play", systemImage: "play.fill")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 48)
+                    }
+                    .openChordProminentGlassButton()
+                    .disabled(album.tracks.isEmpty)
 
-                Button {
-                    Task { await downloads.download(album.tracks) }
-                } label: {
-                    Label(downloadAlbumTitle, systemImage: downloadAlbumSymbol)
-                        .frame(maxWidth: .infinity)
+                    Button {
+                        Task { await downloads.download(album.tracks) }
+                    } label: {
+                        Label(downloadAlbumTitle, systemImage: downloadAlbumSymbol)
+                            .font(.subheadline.weight(.semibold))
+                            .labelStyle(.iconOnly)
+                            .frame(width: 48, height: 48)
+                    }
+                    .openChordGlassButton()
+                    .disabled(album.tracks.isEmpty || isDownloadingAlbum)
+                    .accessibilityLabel(downloadAlbumTitle)
                 }
-                .buttonStyle(.bordered)
-                .disabled(album.tracks.isEmpty || isDownloadingAlbum)
+                .padding(.top, 2)
 
                 LazyVStack(spacing: 0) {
                     ForEach(Array(album.tracks.enumerated()), id: \.element.id) { index, track in
@@ -57,7 +62,7 @@ struct AlbumView: View {
                     }
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 18)
             .padding(.bottom, 40)
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -72,6 +77,14 @@ struct AlbumView: View {
         } message: {
             Text(downloads.errorMessage ?? "")
         }
+    }
+
+    private func playAlbum() {
+        guard let first = album.tracks.first else { return }
+        player.play(
+            track: downloads.playable(first),
+            in: downloads.playable(album.tracks)
+        )
     }
 
     private var isDownloadingAlbum: Bool {
@@ -142,7 +155,7 @@ private struct TrackRow: View {
             }
             .accessibilityLabel("More actions for \(track.title)")
         }
-        .padding(.vertical, 9)
+        .padding(.vertical, 7)
         .alert(
             "Could Not Add Track",
             isPresented: Binding(

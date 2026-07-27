@@ -75,25 +75,25 @@ struct PlaylistView: View {
 
     private func content(_ playlist: Playlist) -> some View {
         ScrollView {
-            VStack(spacing: 24) {
-                ArtworkView(style: playlist.artwork)
-                    .frame(maxWidth: 280)
-                    .padding(.top, 12)
+            VStack(spacing: 18) {
+                ArtworkView(style: playlist.artwork, cornerRadius: 22)
+                    .frame(width: 218, height: 218)
+                    .padding(.top, 8)
 
-                VStack(spacing: 5) {
+                VStack(spacing: 4) {
                     Text(playlist.name)
-                        .font(.largeTitle.bold())
+                        .font(.title2.bold())
                         .multilineTextAlignment(.center)
                     if !playlist.description.isEmpty {
                         Text(playlist.description)
-                            .font(.body)
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
-                            .padding(.top, 2)
+                            .lineLimit(3)
                     }
                     Text(playlist.durationText)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
 
                 Button {
@@ -106,12 +106,11 @@ struct PlaylistView: View {
                     Label("Play", systemImage: "play.fill")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                        .frame(height: 48)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.white)
-                .foregroundStyle(.black)
+                .openChordProminentGlassButton()
                 .disabled(playlist.tracks.isEmpty)
+                .padding(.top, 2)
 
                 if playlist.tracks.isEmpty {
                     ContentUnavailableView(
@@ -119,7 +118,7 @@ struct PlaylistView: View {
                         systemImage: "text.badge.plus",
                         description: Text("Open an album and use a track’s menu to add it here.")
                     )
-                    .padding(.top, 24)
+                    .padding(.top, 12)
                 } else {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(playlist.tracks.enumerated()), id: \.element.id) { index, track in
@@ -128,7 +127,7 @@ struct PlaylistView: View {
                     }
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 18)
             .padding(.bottom, 40)
         }
     }
@@ -178,7 +177,7 @@ struct PlaylistView: View {
             .labelStyle(.iconOnly)
             .frame(width: 36, height: 36)
         }
-        .padding(.vertical, 9)
+        .padding(.vertical, 7)
     }
 
     private var playlist: Playlist? {

@@ -101,7 +101,7 @@ struct CreatePlaylistView: View {
                         .font(.headline)
                         .frame(width: 48, height: 48)
                 }
-                .playlistGlassButton()
+                .openChordGlassButton()
                 .offset(x: 8, y: 8)
             }
 
@@ -124,7 +124,7 @@ struct CreatePlaylistView: View {
         }
         .padding(.horizontal, 18)
         .frame(minHeight: 58)
-        .playlistGlass(cornerRadius: 22)
+        .openChordGlass(cornerRadius: 22)
     }
 
     private var glassDescriptionField: some View {
@@ -148,7 +148,7 @@ struct CreatePlaylistView: View {
                 .scrollContentBackground(.hidden)
         }
         .padding(18)
-        .playlistGlass(cornerRadius: 22)
+        .openChordGlass(cornerRadius: 22)
     }
 
     private var createButton: some View {
@@ -167,7 +167,7 @@ struct CreatePlaylistView: View {
             .frame(maxWidth: .infinity)
             .frame(height: 56)
         }
-        .playlistProminentButton()
+        .openChordProminentGlassButton()
         .disabled(!canCreate)
     }
 
@@ -192,43 +192,6 @@ struct CreatePlaylistView: View {
                 errorMessage = error.localizedDescription
                 isSaving = false
             }
-        }
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func playlistGlass(cornerRadius: CGFloat) -> some View {
-        if #available(iOS 26.0, *) {
-            glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
-        } else {
-            background(
-                .ultraThinMaterial,
-                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            )
-        }
-    }
-
-    @ViewBuilder
-    func playlistGlassButton() -> some View {
-        if #available(iOS 26.0, *) {
-            buttonStyle(.glass)
-        } else {
-            buttonStyle(.bordered)
-                .buttonBorderShape(.circle)
-        }
-    }
-
-    @ViewBuilder
-    func playlistProminentButton() -> some View {
-        if #available(iOS 26.0, *) {
-            buttonStyle(.glassProminent)
-                .tint(.white)
-                .foregroundStyle(.black)
-        } else {
-            buttonStyle(.borderedProminent)
-                .tint(.white)
-                .foregroundStyle(.black)
         }
     }
 }
