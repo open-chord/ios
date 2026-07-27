@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Primary catalog screen covering loading, failure, empty, and populated states.
 struct HomeView: View {
     @EnvironmentObject private var catalog: CatalogStore
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 18)]
@@ -87,6 +88,7 @@ struct HomeView: View {
     }
 }
 
+/// Compact album representation used by the adaptive library grid.
 private struct AlbumCard: View {
     let album: Album
 

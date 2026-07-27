@@ -1,16 +1,33 @@
 import Foundation
 
+/// Loads the catalog from an OpenChord server.
 protocol CatalogLoading: Sendable {
+    /// Fetches the server's current albums.
+    ///
+    /// - Parameter serverURL: The normalized base URL of the OpenChord server.
+    /// - Returns: Albums in the order supplied by the catalog API.
+    /// - Throws: A transport, decoding, or server-reported error.
     func fetchAlbums(from serverURL: URL) async throws -> [Album]
 }
 
+/// A GraphQL-backed catalog loader.
 struct CatalogAPIClient: CatalogLoading {
     private let session: URLSession
 
+    /// Creates a catalog client.
+    ///
+    /// - Parameter session: The session used for requests. Tests can supply an
+    ///   isolated session with a custom protocol handler.
     init(session: URLSession = .shared) {
         self.session = session
     }
 
+    /// Fetches and maps the catalog from an OpenChord GraphQL endpoint.
+    ///
+    /// - Parameter serverURL: The normalized server base URL.
+    /// - Returns: Domain albums with media URLs resolved against `serverURL`.
+    /// - Throws: ``CatalogAPIError`` for invalid HTTP or GraphQL responses, or
+    ///   an error produced by `URLSession` or `JSONDecoder`.
     func fetchAlbums(from serverURL: URL) async throws -> [Album] {
         let endpoint = serverURL.appending(path: "graphql")
         var request = URLRequest(url: endpoint)
@@ -61,6 +78,7 @@ struct CatalogAPIClient: CatalogLoading {
     }
 }
 
+/// Errors produced after a catalog request reaches the server.
 enum CatalogAPIError: LocalizedError {
     case invalidResponse
     case httpStatus(Int)
@@ -78,28 +96,34 @@ enum CatalogAPIError: LocalizedError {
     }
 }
 
+/// Minimal request body accepted by the catalog GraphQL endpoint.
 private struct GraphQLRequest: Encodable {
     let query: String
 }
 
+/// GraphQL response wrapper that keeps transport errors separate from payload decoding.
 private struct GraphQLEnvelope<Payload: Decodable>: Decodable {
     let data: Payload?
     let errors: [GraphQLError]?
 }
 
+/// Server-reported GraphQL error fields used by the client.
 private struct GraphQLError: Decodable {
     let message: String
 }
 
+/// Root payload for the catalog query.
 private struct CatalogPayload: Decodable {
     let albums: [AlbumDTO]
 }
 
+/// Wire representation of an artist.
 private struct ArtistDTO: Decodable {
     let id: UUID
     let name: String
 }
 
+/// Wire representation responsible for mapping an album aggregate to the domain.
 private struct AlbumDTO: Decodable {
     let id: UUID
     let title: String
@@ -125,6 +149,7 @@ private struct AlbumDTO: Decodable {
     }
 }
 
+/// Wire representation responsible for resolving a track's media URL.
 private struct TrackDTO: Decodable {
     let id: UUID
     let title: String
@@ -151,6 +176,7 @@ private struct TrackDTO: Decodable {
     }
 }
 
+/// Millisecond-based lyric interval returned by the backend.
 private struct LyricLineDTO: Decodable {
     let id: UUID
     let text: String
@@ -182,7 +208,7 @@ private extension ArtworkStyle {
     static func forAlbum(_ id: UUID, remoteURL: URL?) -> ArtworkStyle {
         let variants: [ArtworkStyle] = [
             ArtworkStyle(symbol: "sparkles", colors: [.violet, .pink, .orange]),
-            ArtworkStyle(symbol: "moon.stars.fill", colors: [.indigo, .blue, .cyan]),
+            ArtworkStyle(symbol: "moon.fill", colors: [.indigo, .blue, .cyan]),
             ArtworkStyle(symbol: "waveform", colors: [.red, .pink, .violet]),
             ArtworkStyle(symbol: "music.note", colors: [.blue, .cyan, .mint]),
         ]

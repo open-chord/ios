@@ -1,10 +1,12 @@
 import Foundation
 
+/// An artist identity shared by catalog albums.
 struct Artist: Identifiable, Hashable {
     let id: UUID
     let name: String
 }
 
+/// An album and its playback-ordered tracks.
 struct Album: Identifiable, Hashable {
     let id: UUID
     let title: String
@@ -15,13 +17,13 @@ struct Album: Identifiable, Hashable {
 
     var durationText: String {
         let seconds = tracks.reduce(0) { $0 + $1.duration }
-        // TimeInterval является Double. Явное преобразование здесь важно:
-        // пользователь ожидает "19 min", а не внутреннюю точность вычислений.
+        // The UI intentionally presents whole listening minutes.
         let wholeMinutes = Int(seconds) / 60
         return "\(tracks.count) tracks · \(wholeMinutes) min"
     }
 }
 
+/// A playable catalog item with optional synchronized lyrics.
 struct Track: Identifiable, Hashable {
     let id: UUID
     let title: String
@@ -32,6 +34,10 @@ struct Track: Identifiable, Hashable {
     let artwork: ArtworkStyle
     let lyrics: [LyricLine]
 
+    /// Returns the track with a different media location.
+    ///
+    /// - Parameter audioSource: The source the playback engine should resolve.
+    /// - Returns: A copy preserving the track's catalog identity and metadata.
     func using(audioSource: AudioSource) -> Track {
         Track(
             id: id,
@@ -46,10 +52,15 @@ struct Track: Identifiable, Hashable {
     }
 }
 
+/// A media location understood by a playback engine.
 enum AudioSource: Hashable {
     case bundled(resource: String, fileExtension: String)
     case remote(URL)
 
+    /// Resolves the media location to a URL.
+    ///
+    /// - Parameter bundle: The bundle used to resolve bundled resources.
+    /// - Returns: The source URL, or `nil` when a bundled resource is absent.
     func url(in bundle: Bundle = .main) -> URL? {
         switch self {
         case let .bundled(resource, fileExtension):
@@ -60,6 +71,10 @@ enum AudioSource: Hashable {
     }
 }
 
+/// A synchronized lyric segment.
+///
+/// `startTime` is inclusive and `endTime` is exclusive. Both values are
+/// measured in seconds from the beginning of the track.
 struct LyricLine: Identifiable, Hashable {
     let id: UUID
     let text: String
@@ -67,6 +82,7 @@ struct LyricLine: Identifiable, Hashable {
     let endTime: TimeInterval
 }
 
+/// Remote artwork with the deterministic fallback rendered while unavailable.
 struct ArtworkStyle: Hashable {
     let symbol: String
     let colors: [ArtworkColor]
@@ -79,6 +95,7 @@ struct ArtworkStyle: Hashable {
     }
 }
 
+/// Semantic colors available to deterministic artwork placeholders.
 enum ArtworkColor: String, Hashable {
     case violet, indigo, blue, cyan, mint, orange, pink, red
 

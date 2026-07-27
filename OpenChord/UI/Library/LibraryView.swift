@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// List-based view of every album currently retained by the catalog store.
 struct LibraryView: View {
     @EnvironmentObject private var catalog: CatalogStore
 

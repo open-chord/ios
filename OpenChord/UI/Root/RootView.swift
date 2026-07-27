@@ -1,11 +1,14 @@
 import SwiftUI
 
+/// Root navigation shell coordinating tabs, global sheets, and the persistent mini-player.
 struct RootView: View {
-    @EnvironmentObject private var player: PlaybackController
+    @Environment(PlaybackController.self) private var player
     @EnvironmentObject private var catalog: CatalogStore
     @State private var isShowingServerSettings = false
 
     var body: some View {
+        @Bindable var player = player
+
         TabView {
             NavigationStack {
                 HomeView {
@@ -24,12 +27,12 @@ struct RootView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let track = player.currentTrack {
                 MiniPlayer(track: track)
-                    // Safe-area всего TabView включает нижнюю область экрана, но
-                    // не вычитает из неё собственный tab bar. Поднимаем плеер на
-                    // стандартную высоту бара, чтобы два стеклянных слоя не
-                    // накладывались друг на друга.
+                    // TabView's safe area includes the screen bottom but does
+                    // not subtract its own tab bar. Its approximate 50-point
+                    // height plus eight points of breathing room keeps the two
+                    // glass surfaces visually distinct.
                     .padding(.horizontal, 10)
-                    .padding(.bottom, 50)
+                    .padding(.bottom, 58)
             }
         }
         .sheet(isPresented: $player.isPlayerPresented) {
@@ -55,8 +58,9 @@ struct RootView: View {
     }
 }
 
+/// Persistent playback summary displayed above the tab bar.
 private struct MiniPlayer: View {
-    @EnvironmentObject private var player: PlaybackController
+    @Environment(PlaybackController.self) private var player
     let track: Track
 
     var body: some View {
@@ -80,7 +84,7 @@ private struct MiniPlayer: View {
             }
         }
         .padding(8)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .miniPlayerGlass()
         .overlay(alignment: .bottomLeading) {
             GeometryReader { proxy in
                 Capsule()
@@ -94,5 +98,24 @@ private struct MiniPlayer: View {
         .onTapGesture { player.isPlayerPresented = true }
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens the full player")
+    }
+}
+
+private extension View {
+    /// Uses native Liquid Glass where available while preserving the established
+    /// material treatment on the app's iOS 17 deployment target.
+    @ViewBuilder
+    func miniPlayerGlass() -> some View {
+        if #available(iOS 26.0, *) {
+            glassEffect(
+                .clear.interactive(),
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+        } else {
+            background(
+                .ultraThinMaterial,
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+        }
     }
 }

@@ -1,18 +1,19 @@
 import SwiftUI
 
+/// Application composition root for shared catalog, download, and playback state.
+///
+/// The long-lived objects are created once at the scene boundary so playback and
+/// loaded catalog data survive navigation and modal presentation changes.
 @main
 struct OpenChordApp: App {
-    // PlaybackController живёт на уровне приложения, потому что музыка не должна
-    // останавливаться при переходе между вкладками или закрытии экрана альбома.
-    // Позже этот объект станет фасадом над AVPlayer, но UI менять не придётся.
-    @StateObject private var player = PlaybackController()
+    @State private var player = PlaybackController()
     @StateObject private var catalog = CatalogStore()
     @StateObject private var downloads = TrackDownloadStore()
 
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environmentObject(player)
+                .environment(player)
                 .environmentObject(catalog)
                 .environmentObject(downloads)
                 .preferredColorScheme(.dark)

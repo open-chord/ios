@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Modal editor for validating, persisting, and connecting to a server origin.
 struct ServerSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var catalog: CatalogStore

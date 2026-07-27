@@ -2,6 +2,10 @@ import Combine
 import Foundation
 
 @MainActor
+/// Owns the loaded catalog and the user's selected OpenChord server.
+///
+/// The store serializes reloads and preserves the last successful catalog when
+/// a later request fails, allowing the UI to remain useful while offline.
 final class CatalogStore: ObservableObject {
     static let serverURLKey = "openchord.serverURL"
     static let defaultServerAddress = "http://localhost:8080"
@@ -27,11 +31,13 @@ final class CatalogStore: ObservableObject {
             ?? URL(string: Self.defaultServerAddress)!
     }
 
+    /// Loads the catalog once for the lifetime of this store.
     func loadIfNeeded() async {
         guard !hasLoaded else { return }
         await reload()
     }
 
+    /// Refreshes the catalog unless a request is already in progress.
     func reload() async {
         guard !isLoading else { return }
         isLoading = true
@@ -46,6 +52,11 @@ final class CatalogStore: ObservableObject {
         }
     }
 
+    /// Persists a new server address and immediately reloads from it.
+    ///
+    /// - Parameter address: An HTTP or HTTPS origin without a path.
+    /// - Throws: ``ServerAddressError/invalid`` when `address` cannot be
+    ///   normalized to an allowed server URL.
     func updateServerAddress(_ address: String) async throws {
         guard let url = Self.normalizedURL(from: address) else {
             throw ServerAddressError.invalid
@@ -57,6 +68,11 @@ final class CatalogStore: ObservableObject {
         await reload()
     }
 
+    /// Converts user input into an HTTP or HTTPS server origin.
+    ///
+    /// - Parameter address: The value entered in server settings.
+    /// - Returns: A normalized URL with no query or fragment, or `nil` when the
+    ///   input is not a valid server origin.
     static func normalizedURL(from address: String) -> URL? {
         var value = address.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty else { return nil }
@@ -89,6 +105,7 @@ final class CatalogStore: ObservableObject {
     }
 }
 
+/// Validation failures produced before changing the configured server origin.
 enum ServerAddressError: LocalizedError {
     case invalid
 

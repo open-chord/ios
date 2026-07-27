@@ -2,7 +2,12 @@ import Combine
 import Foundation
 
 @MainActor
+/// Stores offline track copies and resolves them for playback.
+///
+/// Downloads are keyed by the server track identifier. A completed download is
+/// discovered from disk rather than relying on transient in-memory state.
 final class TrackDownloadStore: ObservableObject {
+    /// Presentation state for a track's offline copy.
     enum State: Equatable {
         case idle
         case downloading
@@ -37,6 +42,12 @@ final class TrackDownloadStore: ObservableObject {
         return states[track.id] ?? .idle
     }
 
+    /// Downloads a track when it has a remote source and no local copy.
+    ///
+    /// The method coalesces repeated requests for the same track. Failures are
+    /// reflected in ``states`` and ``errorMessage`` for presentation by the UI.
+    ///
+    /// - Parameter track: The catalog track to persist for offline playback.
     func download(_ track: Track) async {
         guard state(for: track) != .downloading, localURL(for: track) == nil else { return }
         guard case let .remote(remoteURL) = track.audioSource else { return }
@@ -63,12 +74,20 @@ final class TrackDownloadStore: ObservableObject {
         }
     }
 
+    /// Downloads tracks sequentially to avoid saturating a self-hosted server.
+    ///
+    /// - Parameter tracks: Tracks to make available offline.
     func download(_ tracks: [Track]) async {
         for track in tracks where state(for: track) != .downloaded {
             await download(track)
         }
     }
 
+    /// Resolves a track to its local copy when one exists.
+    ///
+    /// - Parameter track: The catalog track requested for playback.
+    /// - Returns: A copy whose audio source points at the downloaded file, or
+    ///   the original track when it has not been downloaded.
     func playable(_ track: Track) -> Track {
         guard let localURL = localURL(for: track) else { return track }
         return track.using(audioSource: .remote(localURL))
@@ -109,6 +128,7 @@ final class TrackDownloadStore: ObservableObject {
     }
 }
 
+/// Internal validation failures for completed download responses.
 private enum DownloadError: LocalizedError {
     case invalidResponse
 
