@@ -2,33 +2,59 @@ import SwiftUI
 
 /// Root navigation shell coordinating the library, global sheets, and persistent mini-player.
 struct RootView: View {
+    private enum AppTab: Hashable {
+        case library
+        case settings
+    }
+
     @Environment(PlaybackController.self) private var player
     @EnvironmentObject private var catalog: CatalogStore
-    @State private var isShowingServerSettings = false
+    @State private var selectedTab: AppTab = .library
 
+    @ViewBuilder
     var body: some View {
         @Bindable var player = player
 
-        NavigationStack {
-            LibraryView {
-                isShowingServerSettings = true
-            }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        if #available(iOS 26.0, *) {
             if let track = player.currentTrack {
-                MiniPlayer(track: track)
-                    .padding(.horizontal, 10)
-                    // iOS 26 presents `.searchable` as a bottom glass surface.
-                    // Keep playback controls above it instead of stacking two
-                    // interactive surfaces in the same safe-area region.
-                    .padding(.bottom, 76)
+                tabShell
+                    .tabViewBottomAccessory {
+                        AdaptiveMiniPlayer(track: track)
+                    }
+            } else {
+                tabShell
             }
+        } else {
+            tabShell
+                .safeAreaInset(edge: .bottom, spacing: 8) {
+                    if let track = player.currentTrack {
+                        LegacyMiniPlayer(track: track)
+                            .padding(.horizontal, 10)
+                    }
+                }
+        }
+    }
+
+    private var tabShell: some View {
+        @Bindable var player = player
+
+        return TabView(selection: $selectedTab) {
+            NavigationStack {
+                LibraryView {
+                    selectedTab = .settings
+                }
+            }
+            .tabItem { Label("Library", systemImage: "square.stack.fill") }
+            .tag(AppTab.library)
+
+            NavigationStack {
+                SettingsView()
+            }
+            .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+            .tag(AppTab.settings)
         }
         .sheet(isPresented: $player.isPlayerPresented) {
             PlayerView()
-        }
-        .sheet(isPresented: $isShowingServerSettings) {
-            ServerSettingsView()
         }
         .tint(.white)
         .task {
@@ -37,19 +63,55 @@ struct RootView: View {
     }
 }
 
-/// Persistent playback summary displayed above the tab bar.
-private struct MiniPlayer: View {
-    @Environment(PlaybackController.self) private var player
+/// Playback summary that follows the system accessory's expanded or inline placement.
+@available(iOS 26.0, *)
+private struct AdaptiveMiniPlayer: View {
+    @Environment(\.tabViewBottomAccessoryPlacement) private var accessoryPlacement
     let track: Track
 
     var body: some View {
-        HStack(spacing: 12) {
-            ArtworkView(style: track.artwork, cornerRadius: 10)
-                .frame(width: 48, height: 48)
+        MiniPlayerContent(
+            track: track,
+            isCompact: accessoryPlacement == .inline,
+            usesFallbackMaterial: false
+        )
+    }
+}
+
+/// Material-backed playback summary for systems without tab accessories.
+private struct LegacyMiniPlayer: View {
+    let track: Track
+
+    var body: some View {
+        MiniPlayerContent(track: track, isCompact: false, usesFallbackMaterial: true)
+    }
+}
+
+/// Shared mini-player content independent of its system container.
+private struct MiniPlayerContent: View {
+    @Environment(PlaybackController.self) private var player
+    let track: Track
+    let isCompact: Bool
+    let usesFallbackMaterial: Bool
+
+    var body: some View {
+        HStack(spacing: isCompact ? 8 : 12) {
+            ArtworkView(style: track.artwork, cornerRadius: isCompact ? 6 : 10)
+                .frame(
+                    width: isCompact ? 30 : 48,
+                    height: isCompact ? 30 : 48
+                )
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(track.title).font(.subheadline.weight(.semibold))
-                Text(track.artistName).font(.caption).foregroundStyle(.secondary)
+                Text(track.title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                if !isCompact {
+                    Text(track.artistName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
 
             Spacer()
@@ -62,8 +124,9 @@ private struct MiniPlayer: View {
                     .frame(width: 40, height: 40)
             }
         }
-        .padding(8)
-        .miniPlayerGlass()
+        .padding(.horizontal, 8)
+        .padding(.vertical, isCompact ? 4 : 8)
+        .fallbackMiniPlayerGlass(isEnabled: usesFallbackMaterial)
         .overlay(alignment: .bottomLeading) {
             GeometryReader { proxy in
                 Capsule()
@@ -81,15 +144,11 @@ private struct MiniPlayer: View {
 }
 
 private extension View {
-    /// Uses native Liquid Glass where available while preserving the established
-    /// material treatment on the app's iOS 17 deployment target.
+    /// Adds a material container only on systems without TabView accessories.
     @ViewBuilder
-    func miniPlayerGlass() -> some View {
-        if #available(iOS 26.0, *) {
-            glassEffect(
-                .clear.interactive(),
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-            )
+    func fallbackMiniPlayerGlass(isEnabled: Bool) -> some View {
+        if !isEnabled {
+            self
         } else {
             background(
                 .ultraThinMaterial,

@@ -59,42 +59,22 @@ struct LibraryView: View {
         .background(Color.black)
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: Album.self) { AlbumView(album: $0) }
-        .searchable(text: $searchText, prompt: "Albums or artists")
     }
 
     private var header: some View {
-        HStack(alignment: .center) {
-            Text("Library")
-                .font(.largeTitle.bold())
-                .accessibilityAddTraits(.isHeader)
-
-            Spacer()
-
-            Button {
-                onOpenServerSettings()
-            } label: {
-                ServerStatusIcon(state: catalog.connectionState)
-            }
-            .accessibilityIdentifier("serverSettings")
-            .accessibilityLabel(serverAccessibilityLabel)
-        }
-        .padding(.horizontal)
-        .padding(.top, 8)
-        .padding(.bottom, 16)
-    }
-
-    private var serverAccessibilityLabel: String {
-        switch catalog.connectionState {
-        case .unknown: "Server settings"
-        case .connecting: "Connecting to server"
-        case .connected: "Server connected"
-        case .unavailable: "Server unavailable"
-        }
+        Text("Library")
+            .font(.largeTitle.bold())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
+            .padding(.horizontal)
+            .padding(.top, 8)
+            .padding(.bottom, 16)
     }
 
     private var libraryContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                searchField
                 controls
 
                 if visibleAlbums.isEmpty {
@@ -119,6 +99,19 @@ struct LibraryView: View {
             .padding(.bottom, 16)
         }
         .refreshable { await catalog.reload() }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("Albums or artists", text: $searchText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 44)
+        .background(.thinMaterial, in: Capsule())
     }
 
     private var controls: some View {
@@ -194,43 +187,6 @@ struct LibraryView: View {
                 Task { await catalog.reload() }
             }
             .buttonStyle(.bordered)
-        }
-    }
-}
-
-/// Server glyph with a compact, semantic connection-state badge.
-private struct ServerStatusIcon: View {
-    let state: CatalogStore.ConnectionState
-
-    var body: some View {
-        Image(systemName: "server.rack")
-            .frame(width: 30, height: 30)
-            .overlay(alignment: .bottomTrailing) {
-                statusBadge
-                    .offset(x: 4, y: 4)
-            }
-    }
-
-    @ViewBuilder
-    private var statusBadge: some View {
-        switch state {
-        case .unknown:
-            EmptyView()
-        case .connecting:
-            ProgressView()
-                .controlSize(.mini)
-                .padding(2)
-                .background(.black, in: Circle())
-        case .connected:
-            Image(systemName: "checkmark.circle.fill")
-                .font(.caption)
-                .foregroundStyle(.white, .green)
-                .background(.black, in: Circle())
-        case .unavailable:
-            Image(systemName: "exclamationmark.circle.fill")
-                .font(.caption)
-                .foregroundStyle(.white, .red)
-                .background(.black, in: Circle())
         }
     }
 }
