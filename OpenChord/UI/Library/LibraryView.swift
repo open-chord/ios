@@ -34,25 +34,62 @@ struct LibraryView: View {
     }
 
     var body: some View {
-        Group {
-            if catalog.isLoading && catalog.albums.isEmpty {
-                ProgressView("Loading your library…")
-            } else if let error = catalog.errorMessage, catalog.albums.isEmpty {
-                unavailableContent(error)
-            } else if catalog.albums.isEmpty {
-                ContentUnavailableView(
-                    "Library Empty",
-                    systemImage: "square.stack",
-                    description: Text("The connected server has no albums.")
-                )
-            } else {
-                libraryContent
+        VStack(spacing: 0) {
+            header
+
+            Group {
+                if catalog.isLoading && catalog.albums.isEmpty {
+                    ProgressView("Loading your library…")
+                        .frame(maxHeight: .infinity)
+                } else if let error = catalog.errorMessage, catalog.albums.isEmpty {
+                    unavailableContent(error)
+                        .frame(maxHeight: .infinity)
+                } else if catalog.albums.isEmpty {
+                    ContentUnavailableView(
+                        "Library Empty",
+                        systemImage: "square.stack",
+                        description: Text("The connected server has no albums.")
+                    )
+                    .frame(maxHeight: .infinity)
+                } else {
+                    libraryContent
+                }
             }
         }
         .background(Color.black)
-        .navigationTitle("Library")
+        .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: Album.self) { AlbumView(album: $0) }
         .searchable(text: $searchText, prompt: "Albums or artists")
+    }
+
+    private var header: some View {
+        HStack(alignment: .center) {
+            Text("Library")
+                .font(.largeTitle.bold())
+                .accessibilityAddTraits(.isHeader)
+
+            Spacer()
+
+            Button {
+                onOpenServerSettings()
+            } label: {
+                ServerStatusIcon(state: catalog.connectionState)
+            }
+            .accessibilityIdentifier("serverSettings")
+            .accessibilityLabel(serverAccessibilityLabel)
+        }
+        .padding(.horizontal)
+        .padding(.top, 8)
+        .padding(.bottom, 16)
+    }
+
+    private var serverAccessibilityLabel: String {
+        switch catalog.connectionState {
+        case .unknown: "Server settings"
+        case .connecting: "Connecting to server"
+        case .connected: "Server connected"
+        case .unavailable: "Server unavailable"
+        }
     }
 
     private var libraryContent: some View {
@@ -157,6 +194,43 @@ struct LibraryView: View {
                 Task { await catalog.reload() }
             }
             .buttonStyle(.bordered)
+        }
+    }
+}
+
+/// Server glyph with a compact, semantic connection-state badge.
+private struct ServerStatusIcon: View {
+    let state: CatalogStore.ConnectionState
+
+    var body: some View {
+        Image(systemName: "server.rack")
+            .frame(width: 30, height: 30)
+            .overlay(alignment: .bottomTrailing) {
+                statusBadge
+                    .offset(x: 4, y: 4)
+            }
+    }
+
+    @ViewBuilder
+    private var statusBadge: some View {
+        switch state {
+        case .unknown:
+            EmptyView()
+        case .connecting:
+            ProgressView()
+                .controlSize(.mini)
+                .padding(2)
+                .background(.black, in: Circle())
+        case .connected:
+            Image(systemName: "checkmark.circle.fill")
+                .font(.caption)
+                .foregroundStyle(.white, .green)
+                .background(.black, in: Circle())
+        case .unavailable:
+            Image(systemName: "exclamationmark.circle.fill")
+                .font(.caption)
+                .foregroundStyle(.white, .red)
+                .background(.black, in: Circle())
         }
     }
 }
