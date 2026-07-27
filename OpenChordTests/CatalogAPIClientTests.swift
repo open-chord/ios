@@ -34,6 +34,42 @@ struct CatalogAPIClientTests {
     func normalizesServerAddress(input: String, expected: String) {
         #expect(CatalogStore.normalizedURL(from: input)?.absoluteString == expected)
     }
+
+    @Test("Successful catalog request marks the server connected")
+    @MainActor
+    func successfulRequestMarksServerConnected() async {
+        let store = CatalogStore(
+            loader: StubCatalogLoader(result: .success([])),
+            defaults: UserDefaults(suiteName: #function)!
+        )
+
+        await store.reload()
+
+        #expect(store.connectionState == .connected)
+        #expect(store.errorMessage == nil)
+    }
+
+    @Test("Failed catalog request marks the server unavailable")
+    @MainActor
+    func failedRequestMarksServerUnavailable() async {
+        let store = CatalogStore(
+            loader: StubCatalogLoader(result: .failure(URLError(.cannotConnectToHost))),
+            defaults: UserDefaults(suiteName: #function)!
+        )
+
+        await store.reload()
+
+        #expect(store.connectionState == .unavailable)
+        #expect(store.errorMessage != nil)
+    }
+}
+
+private struct StubCatalogLoader: CatalogLoading {
+    let result: Result<[Album], Error>
+
+    func fetchAlbums(from serverURL: URL) async throws -> [Album] {
+        try result.get()
+    }
 }
 
 private final class CatalogURLProtocol: URLProtocol, @unchecked Sendable {

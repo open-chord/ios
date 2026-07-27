@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Root navigation shell coordinating tabs, global sheets, and the persistent mini-player.
+/// Root navigation shell coordinating the library, global sheets, and persistent mini-player.
 struct RootView: View {
     @Environment(PlaybackController.self) private var player
     @EnvironmentObject private var catalog: CatalogStore
@@ -9,30 +9,17 @@ struct RootView: View {
     var body: some View {
         @Bindable var player = player
 
-        TabView {
-            NavigationStack {
-                HomeView {
-                    isShowingServerSettings = true
-                }
-                .toolbar { serverToolbar }
+        NavigationStack {
+            LibraryView {
+                isShowingServerSettings = true
             }
-            .tabItem { Label("Home", systemImage: "house.fill") }
-
-            NavigationStack {
-                LibraryView()
-                    .toolbar { serverToolbar }
-            }
-            .tabItem { Label("Library", systemImage: "square.stack.fill") }
+            .toolbar { serverToolbar }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let track = player.currentTrack {
                 MiniPlayer(track: track)
-                    // TabView's safe area includes the screen bottom but does
-                    // not subtract its own tab bar. Its approximate 50-point
-                    // height plus eight points of breathing room keeps the two
-                    // glass surfaces visually distinct.
                     .padding(.horizontal, 10)
-                    .padding(.bottom, 58)
+                    .padding(.bottom, 8)
             }
         }
         .sheet(isPresented: $player.isPlayerPresented) {
@@ -50,10 +37,59 @@ struct RootView: View {
     @ToolbarContentBuilder
     private var serverToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            Button("Server settings", systemImage: "server.rack") {
+            Button {
                 isShowingServerSettings = true
+            } label: {
+                ServerStatusIcon(state: catalog.connectionState)
             }
             .accessibilityIdentifier("serverSettings")
+            .accessibilityLabel(serverAccessibilityLabel)
+        }
+    }
+
+    private var serverAccessibilityLabel: String {
+        switch catalog.connectionState {
+        case .unknown: "Server settings"
+        case .connecting: "Connecting to server"
+        case .connected: "Server connected"
+        case .unavailable: "Server unavailable"
+        }
+    }
+}
+
+/// Server glyph with a compact, semantic connection-state badge.
+private struct ServerStatusIcon: View {
+    let state: CatalogStore.ConnectionState
+
+    var body: some View {
+        Image(systemName: "server.rack")
+            .frame(width: 30, height: 30)
+            .overlay(alignment: .bottomTrailing) {
+                statusBadge
+                    .offset(x: 4, y: 4)
+            }
+    }
+
+    @ViewBuilder
+    private var statusBadge: some View {
+        switch state {
+        case .unknown:
+            EmptyView()
+        case .connecting:
+            ProgressView()
+                .controlSize(.mini)
+                .padding(2)
+                .background(.black, in: Circle())
+        case .connected:
+            Image(systemName: "checkmark.circle.fill")
+                .font(.caption)
+                .foregroundStyle(.white, .green)
+                .background(.black, in: Circle())
+        case .unavailable:
+            Image(systemName: "exclamationmark.circle.fill")
+                .font(.caption)
+                .foregroundStyle(.white, .red)
+                .background(.black, in: Circle())
         }
     }
 }
