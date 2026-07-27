@@ -75,10 +75,10 @@ struct PlaylistView: View {
 
     private func content(_ playlist: Playlist) -> some View {
         ScrollView {
-            VStack(spacing: 18) {
-                ArtworkView(style: playlist.artwork, cornerRadius: 22)
-                    .frame(width: 218, height: 218)
-                    .padding(.top, 8)
+            VStack(spacing: 14) {
+                ArtworkView(style: playlist.artwork, cornerRadius: 20)
+                    .frame(width: 204, height: 204)
+                    .padding(.top, 4)
 
                 VStack(spacing: 4) {
                     Text(playlist.name)
@@ -96,20 +96,40 @@ struct PlaylistView: View {
                         .foregroundStyle(.tertiary)
                 }
 
-                Button {
-                    guard let first = playlist.tracks.first else { return }
-                    player.play(
-                        track: downloads.playable(first),
-                        in: downloads.playable(playlist.tracks)
-                    )
-                } label: {
-                    Label("Play", systemImage: "play.fill")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 48)
+                HStack(spacing: 14) {
+                    Button {
+                        play(playlist, shuffled: true)
+                    } label: {
+                        Image(systemName: "shuffle")
+                            .font(.headline)
+                            .frame(width: 44, height: 44)
+                    }
+                    .openChordGlassButton()
+                    .disabled(playlist.tracks.isEmpty)
+                    .accessibilityLabel("Shuffle Playlist")
+
+                    Button {
+                        play(playlist, shuffled: false)
+                    } label: {
+                        Label("Play", systemImage: "play.fill")
+                            .font(.headline)
+                            .frame(width: 140, height: 44)
+                    }
+                    .openChordProminentGlassButton()
+                    .disabled(playlist.tracks.isEmpty)
+
+                    Button {
+                        Task { await downloads.download(playlist.tracks) }
+                    } label: {
+                        Label(downloadTitle(for: playlist), systemImage: downloadSymbol(for: playlist))
+                            .font(.subheadline.weight(.semibold))
+                            .labelStyle(.iconOnly)
+                            .frame(width: 44, height: 44)
+                    }
+                    .openChordGlassButton()
+                    .disabled(playlist.tracks.isEmpty || isDownloading(playlist))
+                    .accessibilityLabel(downloadTitle(for: playlist))
                 }
-                .openChordProminentGlassButton()
-                .disabled(playlist.tracks.isEmpty)
                 .padding(.top, 2)
 
                 if playlist.tracks.isEmpty {
@@ -182,6 +202,34 @@ struct PlaylistView: View {
 
     private var playlist: Playlist? {
         catalog.playlists.first { $0.id == playlistID }
+    }
+
+    private func play(_ playlist: Playlist, shuffled: Bool) {
+        let tracks = shuffled ? playlist.tracks.shuffled() : playlist.tracks
+        guard let first = tracks.first else { return }
+        player.play(
+            track: downloads.playable(first),
+            in: downloads.playable(tracks)
+        )
+    }
+
+    private func isDownloading(_ playlist: Playlist) -> Bool {
+        playlist.tracks.contains { downloads.state(for: $0) == .downloading }
+    }
+
+    private func isDownloaded(_ playlist: Playlist) -> Bool {
+        !playlist.tracks.isEmpty
+            && playlist.tracks.allSatisfy { downloads.state(for: $0) == .downloaded }
+    }
+
+    private func downloadTitle(for playlist: Playlist) -> String {
+        isDownloaded(playlist)
+            ? "Downloaded"
+            : isDownloading(playlist) ? "Downloading…" : "Download Playlist"
+    }
+
+    private func downloadSymbol(for playlist: Playlist) -> String {
+        isDownloaded(playlist) ? "checkmark.circle.fill" : "arrow.down.circle"
     }
 
     private func renamePlaylist() {

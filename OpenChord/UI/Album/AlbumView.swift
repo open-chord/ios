@@ -8,10 +8,10 @@ struct AlbumView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 18) {
-                ArtworkView(style: album.artwork, cornerRadius: 22)
-                    .frame(width: 218, height: 218)
-                    .padding(.top, 8)
+            VStack(spacing: 14) {
+                ArtworkView(style: album.artwork, cornerRadius: 20)
+                    .frame(width: 204, height: 204)
+                    .padding(.top, 4)
 
                 VStack(spacing: 4) {
                     Text(album.title)
@@ -25,14 +25,24 @@ struct AlbumView: View {
                         .foregroundStyle(.tertiary)
                 }
 
-                HStack(spacing: 12) {
+                HStack(spacing: 14) {
                     Button {
-                        playAlbum()
+                        playAlbum(shuffled: true)
+                    } label: {
+                        Image(systemName: "shuffle")
+                            .font(.headline)
+                            .frame(width: 44, height: 44)
+                    }
+                    .openChordGlassButton()
+                    .disabled(album.tracks.isEmpty)
+                    .accessibilityLabel("Shuffle Album")
+
+                    Button {
+                        playAlbum(shuffled: false)
                     } label: {
                         Label("Play", systemImage: "play.fill")
                             .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 48)
+                            .frame(width: 140, height: 44)
                     }
                     .openChordProminentGlassButton()
                     .disabled(album.tracks.isEmpty)
@@ -43,7 +53,7 @@ struct AlbumView: View {
                         Label(downloadAlbumTitle, systemImage: downloadAlbumSymbol)
                             .font(.subheadline.weight(.semibold))
                             .labelStyle(.iconOnly)
-                            .frame(width: 48, height: 48)
+                            .frame(width: 44, height: 44)
                     }
                     .openChordGlassButton()
                     .disabled(album.tracks.isEmpty || isDownloadingAlbum)
@@ -79,11 +89,12 @@ struct AlbumView: View {
         }
     }
 
-    private func playAlbum() {
-        guard let first = album.tracks.first else { return }
+    private func playAlbum(shuffled: Bool) {
+        let tracks = shuffled ? album.tracks.shuffled() : album.tracks
+        guard let first = tracks.first else { return }
         player.play(
             track: downloads.playable(first),
-            in: downloads.playable(album.tracks)
+            in: downloads.playable(tracks)
         )
     }
 
