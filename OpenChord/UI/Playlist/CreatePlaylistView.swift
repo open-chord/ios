@@ -16,55 +16,28 @@ struct CreatePlaylistView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        Form {
-            Section {
-                VStack(spacing: 16) {
-                    artwork
-                        .frame(width: 220, height: 220)
+        ScrollView {
+            VStack(spacing: 28) {
+                artworkPicker
+                    .padding(.top, 12)
 
-                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                        HStack {
-                            Image(systemName: "photo")
-                            Text("Choose or Change Artwork")
-                        }
-                    }
-                    .buttonStyle(.bordered)
+                VStack(spacing: 14) {
+                    glassTextField
+                    glassDescriptionField
                 }
-                .frame(maxWidth: .infinity)
-                .listRowBackground(Color.clear)
-            }
 
-            Section {
-                TextField("Name", text: $name)
-                    .textInputAutocapitalization(.words)
-
-                ZStack(alignment: .topLeading) {
-                    if playlistDescription.isEmpty {
-                        Text("Description")
-                            .foregroundStyle(.tertiary)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 8)
-                    }
-                    TextEditor(text: $playlistDescription)
-                        .frame(minHeight: 90)
-                        .scrollContentBackground(.hidden)
-                }
-            } header: {
-                Text("Playlist")
+                createButton
+                    .padding(.top, 4)
             }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 48)
         }
-        .scrollContentBackground(.hidden)
         .background(Color.black)
         .navigationTitle("New Playlist")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Create") { create() }
-                    .fontWeight(.semibold)
-                    .disabled(!canCreate)
             }
         }
         .disabled(isSaving)
@@ -97,20 +70,105 @@ struct CreatePlaylistView: View {
     }
 
     @ViewBuilder
-    private var artwork: some View {
-        if let artworkImage {
-            Image(uiImage: artworkImage)
-                .resizable()
-                .scaledToFill()
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        } else {
-            ArtworkView(
-                style: ArtworkStyle(
-                    symbol: "music.note.list",
-                    colors: [.indigo, .violet]
+    private var artworkContent: some View {
+        Group {
+            if let artworkImage {
+                Image(uiImage: artworkImage)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                ArtworkView(
+                    style: ArtworkStyle(
+                        symbol: "music.note.list",
+                        colors: [.indigo, .violet]
+                    ),
+                    cornerRadius: 28
                 )
-            )
+            }
         }
+        .frame(width: 248, height: 248)
+        .clipped()
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+    }
+
+    private var artworkPicker: some View {
+        VStack(spacing: 14) {
+            ZStack(alignment: .bottomTrailing) {
+                artworkContent
+
+                PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                    Image(systemName: "photo.badge.plus")
+                        .font(.headline)
+                        .frame(width: 48, height: 48)
+                }
+                .playlistGlassButton()
+                .offset(x: 8, y: 8)
+            }
+
+            Text(artworkImage == nil ? "Add artwork" : "Tap to change artwork")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var glassTextField: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "music.note.list")
+                .foregroundStyle(.secondary)
+                .frame(width: 24)
+
+            TextField("Playlist name", text: $name)
+                .font(.body.weight(.medium))
+                .textInputAutocapitalization(.words)
+                .submitLabel(.next)
+        }
+        .padding(.horizontal, 18)
+        .frame(minHeight: 58)
+        .playlistGlass(cornerRadius: 22)
+    }
+
+    private var glassDescriptionField: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("Description", systemImage: "text.alignleft")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+                Text("\(playlistDescription.count)/500")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(
+                        playlistDescription.count > 500 ? Color.red : Color.secondary
+                    )
+            }
+
+            TextEditor(text: $playlistDescription)
+                .font(.body)
+                .frame(minHeight: 108)
+                .scrollContentBackground(.hidden)
+        }
+        .padding(18)
+        .playlistGlass(cornerRadius: 22)
+    }
+
+    private var createButton: some View {
+        Button {
+            create()
+        } label: {
+            HStack(spacing: 9) {
+                if isSaving {
+                    ProgressView()
+                } else {
+                    Image(systemName: "plus")
+                }
+                Text(isSaving ? "Creating…" : "Create Playlist")
+            }
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+        }
+        .playlistProminentButton()
+        .disabled(!canCreate)
     }
 
     private var canCreate: Bool {
@@ -134,6 +192,43 @@ struct CreatePlaylistView: View {
                 errorMessage = error.localizedDescription
                 isSaving = false
             }
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func playlistGlass(cornerRadius: CGFloat) -> some View {
+        if #available(iOS 26.0, *) {
+            glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+        } else {
+            background(
+                .ultraThinMaterial,
+                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            )
+        }
+    }
+
+    @ViewBuilder
+    func playlistGlassButton() -> some View {
+        if #available(iOS 26.0, *) {
+            buttonStyle(.glass)
+        } else {
+            buttonStyle(.bordered)
+                .buttonBorderShape(.circle)
+        }
+    }
+
+    @ViewBuilder
+    func playlistProminentButton() -> some View {
+        if #available(iOS 26.0, *) {
+            buttonStyle(.glassProminent)
+                .tint(.white)
+                .foregroundStyle(.black)
+        } else {
+            buttonStyle(.borderedProminent)
+                .tint(.white)
+                .foregroundStyle(.black)
         }
     }
 }
